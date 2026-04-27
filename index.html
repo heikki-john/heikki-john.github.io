@@ -3,707 +3,493 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kuinka Monta? — Online</title>
+<title>Kuinka Monta?</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --gold:#F5C842;--gold-dark:#C9900A;
-  --bg:#0f0e17;--surface:#1a1929;--surface2:#242338;
-  --text:#f0ede6;--muted:#8c8aa0;
-  --accent:#6c5ce7;--green:#00b894;--red:#d63031;--orange:#e17055;
-  --border:rgba(255,255,255,0.08);--radius:14px;
+  --bg:#F7F8FC;--surface:#FFFFFF;--surface2:#F0F2F8;--border:#E2E6F0;
+  --text:#1A1D2E;--muted:#6B7280;
+  --accent:#4F46E5;--accent-light:#EEF2FF;
+  --green:#059669;--green-light:#ECFDF5;
+  --red:#DC2626;--red-light:#FEF2F2;
+  --gold:#D97706;--gold-light:#FFFBEB;
+  --radius:14px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
 }
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 5rem;}
-h1,h2,h3{font-family:'Syne',sans-serif;}
-.screen{width:100%;max-width:660px;display:none;}
-.screen.active{display:block;}
-.logo{text-align:center;margin-bottom:2rem;}
-.logo h1{font-size:clamp(2rem,6vw,3.4rem);font-weight:800;color:var(--gold);letter-spacing:-1px;}
-.logo p{color:var(--muted);font-size:.9rem;margin-top:.3rem;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;margin-bottom:1.25rem;}
-.card h2{font-size:1.2rem;color:var(--gold);margin-bottom:1.25rem;}
-label{display:block;font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem;}
-input[type=text],input[type=number],textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:1rem;padding:.6rem .9rem;outline:none;transition:border-color .2s;}
-input:focus,textarea:focus{border-color:var(--accent);}
-textarea{resize:vertical;min-height:65px;}
-.btn{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;padding:.65rem 1.6rem;border-radius:9px;border:none;cursor:pointer;transition:transform .15s,opacity .15s,background .15s;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 5rem;}
+.screen{width:100%;max-width:620px;display:none;}
+.screen.active{display:flex;flex-direction:column;gap:1rem;}
+.logo{text-align:center;padding:.5rem 0 .5rem;}
+.logo h1{font-size:clamp(1.8rem,5vw,2.8rem);font-weight:800;color:var(--accent);letter-spacing:-1.5px;}
+.logo p{color:var(--muted);font-size:.88rem;margin-top:.2rem;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow);}
+.card-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;}
+.cticon{width:26px;height:26px;border-radius:7px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:.85rem;}
+label{display:block;font-size:.73rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem;}
+input[type=text],input[type=number],textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.95rem;padding:.58rem .85rem;outline:none;transition:border-color .2s,box-shadow .2s;}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.1);}
+textarea{resize:vertical;min-height:60px;}
+.btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.88rem;padding:.6rem 1.4rem;border-radius:9px;border:none;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:.35rem;}
 .btn:active{transform:scale(.97);}
-.btn:disabled{opacity:.4;cursor:default;}
-.btn-gold{background:var(--gold);color:#1a1400;}
-.btn-gold:hover:not(:disabled){background:#ffd452;}
-.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
-.btn-ghost:hover:not(:disabled){background:#2e2c48;}
-.btn-red{background:var(--red);color:#fff;}
-.btn-green{background:var(--green);color:#fff;}
-.row{display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;}
-.row>*{flex:1;min-width:120px;}
-.err{color:var(--red);font-size:.82rem;margin-top:.5rem;display:none;}
-
-/* Role chooser */
-.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.5rem;}
-.role-btn{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;}
-.role-btn:hover{border-color:var(--accent);background:rgba(108,92,231,.12);}
-.role-btn .icon{font-size:2rem;margin-bottom:.5rem;}
-.role-btn .rlabel{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;}
-.role-btn .rsub{font-size:.8rem;color:var(--muted);margin-top:.25rem;}
-
-/* Game code display */
-.game-code{font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;letter-spacing:.15em;color:var(--gold);text-align:center;padding:1rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border);}
-.code-hint{text-align:center;color:var(--muted);font-size:.85rem;margin-top:.5rem;}
-
-/* Player list */
-.player-chip{display:inline-flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:.3rem .85rem;font-size:.88rem;margin:.2rem;}
-.player-chips{display:flex;flex-wrap:wrap;margin-top:.75rem;}
-
-/* Q blocks */
-.q-block{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-bottom:.7rem;}
-.q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;font-size:.88rem;color:var(--gold);font-weight:700;font-family:'Syne',sans-serif;}
-.q-head button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;}
-.q-head button:hover{color:var(--red);}
-
-/* Lobby waiting */
-.waiting-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 1.5s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-
-/* Progress */
-.prog-wrap{height:4px;background:var(--surface2);border-radius:99px;margin-bottom:1.5rem;overflow:hidden;}
-.prog-bar{height:100%;background:var(--accent);border-radius:99px;transition:width .4s;}
-
-/* Scoreboard */
-.scoreboard{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem;}
-.score-badge{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:.4rem .9rem;font-size:.85rem;display:flex;flex-direction:column;align-items:center;min-width:75px;}
-.score-badge .sname{color:var(--muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
-.score-badge .spts{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;color:var(--gold);}
-.score-badge.me{border-color:var(--accent);}
-
-/* Question display */
-.q-display{background:linear-gradient(135deg,var(--accent) 0%,#8e44ad 100%);border-radius:12px;padding:1.4rem;margin-bottom:1.4rem;text-align:center;}
-.q-display .qnum{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.4rem;}
-.q-display .qtext{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;line-height:1.35;}
-
-/* Answer rows */
-.ans-row{display:flex;align-items:center;gap:.7rem;margin-bottom:.55rem;}
-.ans-row .pname{min-width:105px;font-size:.9rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.btn:disabled{opacity:.45;cursor:default;}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.22);}
+.btn-primary:hover:not(:disabled){background:#4338CA;}
+.btn-secondary{background:var(--surface);color:var(--text);border:1.5px solid var(--border);}
+.btn-secondary:hover:not(:disabled){background:var(--surface2);}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.role-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:1.4rem 1rem;text-align:center;cursor:pointer;transition:border-color .2s,box-shadow .2s,background .2s;}
+.role-btn:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.1);background:var(--accent-light);}
+.r-icon{font-size:1.8rem;margin-bottom:.45rem;}
+.r-label{font-weight:700;font-size:.92rem;}
+.r-sub{font-size:.76rem;color:var(--muted);margin-top:.18rem;}
+.game-code-box{background:var(--accent-light);border:2px dashed #A5B4FC;border-radius:11px;padding:1.1rem;text-align:center;}
+.gc-val{font-size:2.7rem;font-weight:800;letter-spacing:.2em;color:var(--accent);}
+.gc-hint{font-size:.8rem;color:var(--muted);margin-top:.3rem;}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem;}
+.chip{display:inline-flex;align-items:center;gap:.3rem;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:.26rem .78rem;font-size:.8rem;font-weight:500;}
+.chip.online{background:var(--green-light);border-color:#A7F3D0;color:var(--green);}
+.q-block{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:.85rem .95rem;margin-bottom:.55rem;}
+.q-num{font-size:.73rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.45rem;display:flex;justify-content:space-between;align-items:center;}
+.q-num button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;}
+.q-num button:hover{color:var(--red);}
+.field-row{display:grid;grid-template-columns:1fr 140px;gap:.55rem;margin-top:.45rem;}
+.prog-wrap{height:5px;background:var(--surface2);border-radius:99px;overflow:hidden;}
+.prog-bar{height:100%;background:var(--accent);border-radius:99px;transition:width .4s ease;}
+.scoreboard{display:flex;flex-wrap:wrap;gap:.4rem;}
+.sbadge{background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:.32rem .8rem;display:flex;flex-direction:column;align-items:center;min-width:70px;}
+.sbadge .sn{font-size:.68rem;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:75px;}
+.sbadge .sp{font-size:1.05rem;font-weight:800;color:var(--accent);}
+.sbadge.me{border-color:var(--accent);background:var(--accent-light);}
+.q-card{background:var(--accent);border-radius:11px;padding:1.2rem 1.3rem;text-align:center;color:#fff;margin:.6rem 0;}
+.q-card .qn{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-bottom:.3rem;}
+.q-card .qt{font-size:1.2rem;font-weight:800;line-height:1.35;}
+.ans-row{display:flex;align-items:center;gap:.65rem;margin-bottom:.48rem;}
+.ans-row .pn{min-width:98px;font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ans-row input{flex:1;}
-.ans-row .result{min-width:75px;text-align:right;font-family:'Syne',sans-serif;font-weight:700;font-size:.92rem;}
+.ans-row .res{min-width:65px;text-align:right;font-weight:800;font-size:.86rem;}
 .pts2{color:var(--gold);}
 .pts1{color:var(--green);}
 .pts0{color:var(--muted);}
-
-/* Reveal box */
-.reveal-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin:1rem 0;text-align:center;}
-.reveal-box .rlabel{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem;}
-.reveal-box .rval{font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;color:var(--gold);}
-
-/* Status messages */
-.status-msg{text-align:center;padding:1.5rem;color:var(--muted);font-size:.95rem;}
-.status-msg .big{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:.5rem;}
-
-/* Waiting for answers */
-.waiting-grid{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0;}
-.w-chip{padding:.35rem .9rem;border-radius:99px;font-size:.85rem;border:1px solid var(--border);}
-.w-chip.done{background:rgba(0,184,148,.15);border-color:var(--green);color:var(--green);}
-.w-chip.waiting{background:var(--surface2);color:var(--muted);}
-
-/* Podium */
-.podium{display:flex;align-items:flex-end;justify-content:center;gap:.5rem;margin:1.5rem 0 2rem;}
-.podium-block{display:flex;flex-direction:column;align-items:center;width:120px;}
-.p-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;margin-bottom:.4rem;}
-.p-name{font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:115px;}
-.p-pts{font-size:.78rem;color:var(--muted);margin-bottom:.4rem;}
-.p-stand{width:100%;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1.7rem;color:rgba(0,0,0,.5);}
-.other-results{width:100%;border-top:1px solid var(--border);padding-top:1rem;}
-.other-row{display:flex;justify-content:space-between;padding:.4rem 0;font-size:.92rem;border-bottom:1px solid var(--border);}
-.other-row:last-child{border-bottom:none;}
-.other-row .orank{color:var(--muted);min-width:28px;}
-.other-row .opts{font-family:'Syne',sans-serif;font-weight:700;color:var(--gold);}
-.actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.4rem;}
-.divider{height:1px;background:var(--border);margin:1.1rem 0;}
-
-/* Spinner */
-.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto;}
-@keyframes spin{to{transform:rotate(360deg);}}
-
-/* Copy button */
-.copy-btn{background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:.8rem;padding:.3rem .7rem;cursor:pointer;transition:color .2s,border-color .2s;}
-.copy-btn:hover{color:var(--gold);border-color:var(--gold);}
+.reveal-box{background:var(--gold-light);border:1.5px solid #FDE68A;border-radius:10px;padding:.9rem;text-align:center;margin:.7rem 0;}
+.rl{font-size:.7rem;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.22rem;}
+.rv{font-size:2rem;font-weight:800;color:var(--gold);}
+.status-box{background:var(--surface2);border-radius:10px;padding:1.1rem;text-align:center;}
+.sb-big{font-size:1.05rem;font-weight:700;margin-bottom:.25rem;}
+.sb-sub{font-size:.82rem;color:var(--muted);}
+.w-grid{display:flex;flex-wrap:wrap;gap:.38rem;margin:.65rem 0;}
+.w-chip{padding:.28rem .75rem;border-radius:99px;font-size:.8rem;font-weight:500;border:1.5px solid var(--border);}
+.w-chip.done{background:var(--green-light);border-color:#A7F3D0;color:var(--green);}
+.w-chip.pending{background:var(--surface2);color:var(--muted);}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 1.6s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:.5rem;margin:1.1rem 0 1.6rem;}
+.pb{display:flex;flex-direction:column;align-items:center;width:112px;}
+.pb-av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;margin-bottom:.32rem;}
+.pb-name{font-weight:700;font-size:.82rem;margin-bottom:.22rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:108px;}
+.pb-pts{font-size:.72rem;color:var(--muted);margin-bottom:.32rem;}
+.pb-stand{width:100%;border-radius:7px 7px 0 0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.4rem;color:rgba(255,255,255,.65);}
+.others{border-top:1px solid var(--border);padding-top:.7rem;}
+.o-row{display:flex;justify-content:space-between;padding:.36rem 0;font-size:.88rem;border-bottom:1px solid var(--border);}
+.o-row:last-child{border-bottom:none;}
+.o-row .or{color:var(--muted);min-width:25px;}
+.o-row .op{font-weight:800;color:var(--accent);}
+.actions{display:flex;gap:.55rem;flex-wrap:wrap;margin-top:1.1rem;}
+.err{color:var(--red);font-size:.78rem;margin-top:.38rem;display:none;}
+.divider{height:1px;background:var(--border);margin:.85rem 0;}
+.row-end{display:flex;gap:.55rem;justify-content:flex-end;}
+.copy-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:.73rem;padding:.22rem .55rem;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:border-color .2s,color .2s;}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent);}
 </style>
 </head>
 <body>
 
-<!-- ROLE SCREEN -->
-<div id="screen-role" class="screen active">
-  <div class="logo"><h1>KUINKA MONTA?</h1><p>Numero-arvauspeli verkossa</p></div>
+<!-- ROLE -->
+<div id="s-role" class="screen active">
+  <div class="logo"><h1>Kuinka Monta?</h1><p>Numero-arvauspeli verkossa</p></div>
   <div class="card">
     <div class="role-grid">
-      <div class="role-btn" id="btn-host">
-        <div class="icon">👑</div>
-        <div class="rlabel">Isäntä</div>
-        <div class="rsub">Luo uusi peli</div>
-      </div>
-      <div class="role-btn" id="btn-join">
-        <div class="icon">🎮</div>
-        <div class="rlabel">Pelaaja</div>
-        <div class="rsub">Liity peliin koodilla</div>
-      </div>
+      <div class="role-btn" id="btn-host"><div class="r-icon">👑</div><div class="r-label">Isäntä</div><div class="r-sub">Luo uusi peli</div></div>
+      <div class="role-btn" id="btn-join"><div class="r-icon">🎮</div><div class="r-label">Pelaaja</div><div class="r-sub">Liity koodilla</div></div>
     </div>
   </div>
 </div>
 
-<!-- HOST SETUP SCREEN -->
-<div id="screen-host-setup" class="screen">
-  <div class="logo"><h1>KUINKA MONTA?</h1><p>Isännän asetukset</p></div>
+<!-- HOST SETUP -->
+<div id="s-host-setup" class="screen">
+  <div class="logo"><h1>Kuinka Monta?</h1><p>Luo peli</p></div>
   <div class="card">
-    <h2>Isännän nimimerkki</h2>
+    <div class="card-title"><span class="cticon">👤</span>Isännän nimi</div>
     <label>Nimimerkki</label>
     <input type="text" id="host-name" placeholder="esim. Pekka" maxlength="20"/>
-    <p class="err" id="host-name-err"></p>
+    <p class="err" id="err-hname"></p>
   </div>
   <div class="card">
-    <h2>Kysymykset</h2>
-    <div id="questions-list"></div>
-    <button class="btn btn-ghost" id="add-q-btn" style="margin-top:.5rem;">+ Lisää kysymys</button>
-    <p class="err" id="q-err"></p>
+    <div class="card-title"><span class="cticon">❓</span>Kysymykset</div>
+    <div id="q-list"></div>
+    <button class="btn btn-secondary" id="add-q-btn" style="margin-top:.4rem;">+ Lisää kysymys</button>
+    <p class="err" id="err-q"></p>
   </div>
-  <div style="display:flex;gap:.75rem;justify-content:flex-end;">
-    <button class="btn btn-ghost" id="back-from-host">← Takaisin</button>
-    <button class="btn btn-gold" id="create-game-btn">Luo peli ▶</button>
+  <div class="row-end">
+    <button class="btn btn-secondary" id="back1">← Takaisin</button>
+    <button class="btn btn-primary" id="create-btn">Luo peli ▶</button>
   </div>
 </div>
 
 <!-- HOST LOBBY -->
-<div id="screen-host-lobby" class="screen">
-  <div class="logo"><h1>KUINKA MONTA?</h1></div>
-  <div class="card" style="text-align:center;">
-    <h2 style="text-align:left;">Pelin koodi</h2>
-    <div class="game-code" id="lobby-code">----</div>
-    <div class="code-hint">Jaa tämä koodi pelaajille &nbsp;<button class="copy-btn" id="copy-code-btn">kopioi</button></div>
+<div id="s-host-lobby" class="screen">
+  <div class="logo"><h1>Kuinka Monta?</h1></div>
+  <div class="card">
+    <div class="card-title"><span class="cticon">🔑</span>Pelin koodi</div>
+    <div class="game-code-box">
+      <div class="gc-val" id="lobby-code">----</div>
+      <div class="gc-hint">Jaa tämä koodi pelaajille &nbsp;<button class="copy-btn" id="copy-btn">kopioi</button></div>
+    </div>
   </div>
   <div class="card">
-    <h2>Liittyneet pelaajat <span id="player-count" style="color:var(--muted);font-weight:400;font-size:.9rem;"></span></h2>
-    <div class="player-chips" id="lobby-players"></div>
+    <div class="card-title"><span class="cticon">👥</span>Pelaajat <span id="pc" style="color:var(--muted);font-weight:500;font-size:.82rem;margin-left:.2rem;"></span></div>
+    <div class="chips" id="lobby-chips"></div>
+    <p class="err" id="err-lobby"></p>
     <div class="divider"></div>
-    <div style="display:flex;gap:.75rem;justify-content:flex-end;">
-      <button class="btn btn-gold" id="start-game-btn" disabled>Aloita peli ▶</button>
+    <div class="row-end">
+      <button class="btn btn-primary" id="start-btn">Aloita peli ▶</button>
     </div>
-    <p class="err" id="lobby-err"></p>
   </div>
 </div>
 
-<!-- JOIN SCREEN -->
-<div id="screen-join" class="screen">
-  <div class="logo"><h1>KUINKA MONTA?</h1><p>Liity peliin</p></div>
+<!-- JOIN -->
+<div id="s-join" class="screen">
+  <div class="logo"><h1>Kuinka Monta?</h1><p>Liity peliin</p></div>
   <div class="card">
-    <h2>Syötä tiedot</h2>
+    <div class="card-title"><span class="cticon">🔑</span>Liity peliin</div>
     <label>Pelin koodi</label>
-    <input type="text" id="join-code" placeholder="esim. AB12" maxlength="4" style="text-transform:uppercase;font-family:'Syne',sans-serif;font-size:1.5rem;letter-spacing:.1em;text-align:center;"/>
-    <div style="margin-top:1rem;"></div>
+    <input type="text" id="join-code" placeholder="AB12" maxlength="4" style="text-transform:uppercase;font-size:1.5rem;font-weight:800;letter-spacing:.15em;text-align:center;"/>
+    <div style="margin-top:.8rem;"></div>
     <label>Nimimerkki</label>
     <input type="text" id="join-name" placeholder="esim. Maija" maxlength="20"/>
-    <p class="err" id="join-err"></p>
+    <p class="err" id="err-join"></p>
   </div>
-  <div style="display:flex;gap:.75rem;justify-content:flex-end;">
-    <button class="btn btn-ghost" id="back-from-join">← Takaisin</button>
-    <button class="btn btn-gold" id="join-btn">Liity →</button>
-  </div>
-</div>
-
-<!-- PLAYER WAITING -->
-<div id="screen-player-wait" class="screen">
-  <div class="logo"><h1>KUINKA MONTA?</h1></div>
-  <div class="card" style="text-align:center;">
-    <div class="status-msg">
-      <div class="big">Odotetaan isäntää...</div>
-      <div><span class="waiting-dot"></span> Peli alkaa pian</div>
-    </div>
-    <div class="player-chips" id="wait-players" style="justify-content:center;"></div>
+  <div class="row-end">
+    <button class="btn btn-secondary" id="back2">← Takaisin</button>
+    <button class="btn btn-primary" id="join-btn">Liity →</button>
   </div>
 </div>
 
-<!-- GAME SCREEN (host controls, all see) -->
-<div id="screen-game" class="screen">
-  <div class="logo"><h1>KUINKA MONTA?</h1></div>
+<!-- PLAYER WAIT -->
+<div id="s-pwait" class="screen">
+  <div class="logo"><h1>Kuinka Monta?</h1></div>
   <div class="card">
-    <div class="prog-wrap"><div class="prog-bar" id="game-progress"></div></div>
-    <div class="scoreboard" id="game-scoreboard"></div>
-    <div class="q-display">
-      <div class="qnum" id="game-qnum"></div>
-      <div class="qtext" id="game-qtext"></div>
+    <div class="status-box">
+      <div class="sb-big">Odota hetki...</div>
+      <div class="sb-sub"><span class="dot"></span>Isäntä käynnistää pelin pian</div>
     </div>
-
-    <!-- Answer phase -->
-    <div id="phase-answer">
-      <div style="margin-bottom:.75rem;">
-        <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.75rem;">Vastaukset</h3>
-        <div id="answer-inputs"></div>
-      </div>
-      <!-- Host sees who answered -->
-      <div id="host-answer-watch" style="display:none;">
-        <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.6rem;">Tilanne</h3>
-        <div class="waiting-grid" id="answer-status-grid"></div>
-        <div class="actions">
-          <button class="btn btn-gold" id="host-reveal-btn">Paljasta vastaukset →</button>
-        </div>
-      </div>
-      <!-- Player sees input -->
-      <div id="player-answer-input" style="display:none;">
-        <div class="ans-row">
-          <span class="pname" id="my-name-label"></span>
-          <input type="number" id="my-answer" placeholder="Vastauksesi"/>
-        </div>
-        <div class="actions">
-          <button class="btn btn-gold" id="submit-answer-btn">Lähetä vastaus ✓</button>
-        </div>
-        <p id="answer-sent-msg" style="display:none;color:var(--green);margin-top:.75rem;font-weight:500;">✓ Vastauksesi on lähetetty! Odotetaan muita...</p>
-      </div>
-    </div>
-
-    <!-- Reveal phase -->
-    <div id="phase-reveal" style="display:none;">
-      <div class="reveal-box">
-        <div class="rlabel">Oikea vastaus</div>
-        <div class="rval" id="reveal-correct"></div>
-      </div>
-      <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.75rem;">Tulokset</h3>
-      <div id="reveal-results"></div>
-      <div id="host-next-actions" style="display:none;" class="actions">
-        <button class="btn btn-gold" id="host-next-btn">Seuraava →</button>
-      </div>
-      <div id="player-reveal-wait" style="display:none;" class="status-msg" style="padding:.75rem 0;">
-        <span class="waiting-dot"></span> Odotetaan isäntää...
-      </div>
-    </div>
-
+    <div class="chips" id="wait-chips" style="margin-top:.7rem;justify-content:center;"></div>
   </div>
 </div>
 
-<!-- PODIUM SCREEN -->
-<div id="screen-podium" class="screen">
-  <div class="logo"><h1>LOPPUSIJAT</h1><p>Peli on ohi!</p></div>
+<!-- GAME -->
+<div id="s-game" class="screen">
+  <div class="logo"><h1>Kuinka Monta?</h1></div>
   <div class="card">
-    <div class="podium" id="podium-el"></div>
-    <div class="other-results" id="other-results-el"></div>
-    <div style="margin-top:1.5rem;text-align:center;">
-      <button class="btn btn-gold" id="play-again-btn">Pelaa uudelleen</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem;">
+      <span id="q-label" style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;"></span>
+      <div class="prog-wrap" style="width:110px;"><div class="prog-bar" id="prog"></div></div>
+    </div>
+    <div class="scoreboard" id="scoreboard"></div>
+    <div class="q-card"><div class="qn" id="qnum"></div><div class="qt" id="qtext"></div></div>
+
+    <div id="ph-answer">
+      <!-- Host -->
+      <div id="hv-answer" style="display:none;">
+        <p style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:.75rem 0 .45rem;">Tilanne</p>
+        <div class="w-grid" id="ans-status"></div>
+        <div class="actions"><button class="btn btn-primary" id="host-reveal-btn">Paljasta vastaukset →</button></div>
+      </div>
+      <!-- Player -->
+      <div id="pv-answer" style="display:none;">
+        <div style="margin-top:.75rem;">
+          <label>Vastauksesi</label>
+          <input type="number" id="my-ans" placeholder="Kirjoita numero"/>
+        </div>
+        <div class="actions"><button class="btn btn-primary" id="submit-btn">Lähetä ✓</button></div>
+        <p id="sent-msg" style="display:none;color:var(--green);font-weight:600;font-size:.85rem;margin-top:.55rem;">✓ Lähetetty! Odotetaan muita...</p>
+      </div>
+    </div>
+
+    <div id="ph-reveal" style="display:none;">
+      <div class="reveal-box"><div class="rl">Oikea vastaus</div><div class="rv" id="rev-correct"></div></div>
+      <p style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.55rem;">Tulokset</p>
+      <div id="rev-results"></div>
+      <div id="host-next-wrap" style="display:none;" class="actions">
+        <button class="btn btn-primary" id="next-btn">Seuraava →</button>
+      </div>
+      <p id="player-wait-msg" style="display:none;color:var(--muted);font-size:.82rem;margin-top:.75rem;"><span class="dot"></span>Odotetaan isäntää...</p>
+    </div>
+  </div>
+</div>
+
+<!-- PODIUM -->
+<div id="s-podium" class="screen">
+  <div class="logo"><h1>Tulokset!</h1><p>Peli on ohi</p></div>
+  <div class="card">
+    <div class="podium" id="podium"></div>
+    <div class="others" id="others"></div>
+    <div style="margin-top:1.1rem;text-align:center;">
+      <button class="btn btn-primary" id="again-btn">Pelaa uudelleen</button>
     </div>
   </div>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://jacunkwooijoftfcsmzy.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_7Qb-OcGE7dx66MjTv9MEOw_PdT8Tzwj';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPA_URL='https://jacunkwooijoftfcsmzy.supabase.co';
+const SUPA_KEY='sb_publishable_7Qb-OcGE7dx66MjTv9MEOw_PdT8Tzwj';
+const {createClient}=supabase;
+const db=createClient(SUPA_URL,SUPA_KEY);
 
-// State
-let role = null; // 'host' | 'player'
-let gameCode = null;
-let myName = null;
-let gameState = null;
-let subscription = null;
+let role=null,gameCode=null,myName=null,gameState=null,sub=null,questions=[];
 
-// UI helpers
-const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); };
-const $ = id => document.getElementById(id);
-const err = (id, msg) => { const el = $(id); el.textContent = msg; el.style.display = msg ? 'block' : 'none'; };
+const $=id=>document.getElementById(id);
+const show=id=>{document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');};
+const setErr=(id,msg)=>{const e=$(id);e.textContent=msg;e.style.display=msg?'block':'none';};
+const genCode=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join('');};
 
-// Generate 4-char game code
-function genCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
-}
+$('btn-host').onclick=()=>{role='host';if(!questions.length)questions=[{text:'',answer:''}];renderQ();show('s-host-setup');};
+$('btn-join').onclick=()=>{role='player';show('s-join');};
+$('back1').onclick=()=>show('s-role');
+$('back2').onclick=()=>show('s-role');
 
-// ROLE SELECTION
-$('btn-host').addEventListener('click', () => { role = 'host'; show('screen-host-setup'); initQList(); });
-$('btn-join').addEventListener('click', () => { role = 'player'; show('screen-join'); });
-$('back-from-host').addEventListener('click', () => show('screen-role'));
-$('back-from-join').addEventListener('click', () => show('screen-role'));
-
-// QUESTIONS LIST
-let questions = [];
-function initQList() {
-  if (questions.length === 0) { questions = [{text:'',answer:''}]; }
-  renderQList();
-}
-function renderQList() {
-  const list = $('questions-list');
-  list.innerHTML = '';
-  questions.forEach((q, i) => {
-    const b = document.createElement('div');
-    b.className = 'q-block';
-    b.innerHTML = `<div class="q-head"><span>Kysymys ${i+1}</span><button data-i="${i}" class="rm-q">✕</button></div>
-      <label>Kysymys</label>
-      <textarea placeholder="esim. Kuinka monta raitaa on USA:n lipussa?" data-f="text" data-i="${i}">${q.text}</textarea>
-      <div style="margin-top:.5rem;"></div>
-      <label>Oikea vastaus (numero)</label>
-      <input type="number" placeholder="esim. 13" data-f="answer" data-i="${i}" value="${q.answer}"/>`;
-    list.appendChild(b);
+function renderQ(){
+  const l=$('q-list');l.innerHTML='';
+  questions.forEach((q,i)=>{
+    const b=document.createElement('div');b.className='q-block';
+    b.innerHTML=`<div class="q-num"><span>Kysymys ${i+1}</span><button data-i="${i}" class="rmq">✕</button></div>
+      <label>Kysymys</label><textarea data-f="text" data-i="${i}" placeholder="esim. Kuinka monta raitaa on USA:n lipussa?">${q.text}</textarea>
+      <div class="field-row"><div><label>Oikea vastaus (numero)</label><input type="number" data-f="answer" data-i="${i}" value="${q.answer}" placeholder="esim. 13"/></div></div>`;
+    l.appendChild(b);
   });
-  list.querySelectorAll('[data-f]').forEach(el => el.addEventListener('input', () => { questions[+el.dataset.i][el.dataset.f] = el.value; }));
-  list.querySelectorAll('.rm-q').forEach(b => b.addEventListener('click', () => { questions.splice(+b.dataset.i,1); renderQList(); }));
+  l.querySelectorAll('[data-f]').forEach(el=>el.oninput=()=>{questions[+el.dataset.i][el.dataset.f]=el.value;});
+  l.querySelectorAll('.rmq').forEach(b=>b.onclick=()=>{questions.splice(+b.dataset.i,1);renderQ();});
 }
-$('add-q-btn').addEventListener('click', () => { questions.push({text:'',answer:''}); renderQList(); });
+$('add-q-btn').onclick=()=>{questions.push({text:'',answer:''});renderQ();};
 
-// CREATE GAME
-$('create-game-btn').addEventListener('click', async () => {
-  const name = $('host-name').value.trim();
-  err('host-name-err',''); err('q-err','');
-  if (!name) { err('host-name-err','Anna nimimerkki.'); return; }
-  const validQs = questions.filter(q => q.text.trim() && q.answer !== '' && !isNaN(+q.answer));
-  if (validQs.length < 1) { err('q-err','Lisää vähintään yksi kysymys oikealla numerolla.'); return; }
+$('create-btn').onclick=async()=>{
+  const name=$('host-name').value.trim();
+  setErr('err-hname','');setErr('err-q','');
+  if(!name){setErr('err-hname','Anna nimimerkki.');return;}
+  const vq=questions.filter(q=>q.text.trim()&&q.answer!==''&&!isNaN(+q.answer));
+  if(!vq.length){setErr('err-q','Lisää vähintään yksi kysymys oikealla numerolla.');return;}
+  myName=name;gameCode=genCode();
+  const state={phase:'lobby',host:name,players:[name],scores:{[name]:0},
+    questions:vq.map(q=>({text:q.text,answer:+q.answer})),
+    currentQ:0,answers:{},roundPoints:{}};
+  const {error}=await db.from('visa_games').insert({id:gameCode,state,updated_at:new Date().toISOString()});
+  if(error){setErr('err-q','Virhe: '+error.message);return;}
+  gameState=state;
+  $('lobby-code').textContent=gameCode;
+  renderLobby();
+  subscribe();
+  show('s-host-lobby');
+};
 
-  myName = name;
-  gameCode = genCode();
-  const state = {
-    phase: 'lobby', // lobby | answering | revealing | podium
-    host: name,
-    players: [name],
-    scores: {[name]: 0},
-    questions: validQs.map(q => ({text:q.text, answer:+q.answer})),
-    currentQ: 0,
-    answers: {}, // {playerName: number}
-  };
+$('copy-btn').onclick=()=>{
+  navigator.clipboard.writeText(gameCode).then(()=>{$('copy-btn').textContent='kopioitu!';setTimeout(()=>$('copy-btn').textContent='kopioi',2000);});
+};
 
-  const { error } = await db.from('visa_games').insert({id: gameCode, state});
-  if (error) { err('q-err','Virhe luodessa peliä: ' + error.message); return; }
+$('join-btn').onclick=async()=>{
+  const code=$('join-code').value.trim().toUpperCase();
+  const name=$('join-name').value.trim();
+  setErr('err-join','');
+  if(code.length!==4){setErr('err-join','Anna 4-merkkinen koodi.');return;}
+  if(!name){setErr('err-join','Anna nimimerkki.');return;}
+  const {data,error}=await db.from('visa_games').select('state').eq('id',code).single();
+  if(error||!data){setErr('err-join','Peliä ei löydy. Tarkista koodi.');return;}
+  const st=data.state;
+  if(st.phase!=='lobby'){setErr('err-join','Peli on jo käynnissä.');return;}
+  if(st.players.includes(name)){setErr('err-join','Nimimerkki on jo käytössä.');return;}
+  if(st.players.length>=10){setErr('err-join','Peli on täynnä.');return;}
+  myName=name;gameCode=code;
+  st.players.push(name);st.scores[name]=0;
+  const {error:e2}=await db.from('visa_games').update({state:st,updated_at:new Date().toISOString()}).eq('id',code);
+  if(e2){setErr('err-join','Virhe: '+e2.message);return;}
+  gameState=st;
+  renderWait();
+  subscribe();
+  show('s-pwait');
+};
 
-  gameState = state;
-  $('lobby-code').textContent = gameCode;
-  renderLobbyPlayers();
-  subscribeToGame();
-  show('screen-host-lobby');
-});
-
-// COPY CODE
-$('copy-code-btn').addEventListener('click', () => {
-  navigator.clipboard.writeText(gameCode).then(() => { $('copy-code-btn').textContent = 'kopioitu!'; setTimeout(() => $('copy-code-btn').textContent = 'kopioi', 2000); });
-});
-
-// JOIN GAME
-$('join-btn').addEventListener('click', async () => {
-  const code = $('join-code').value.trim().toUpperCase();
-  const name = $('join-name').value.trim();
-  err('join-err','');
-  if (!code || code.length !== 4) { err('join-err','Anna 4-merkkinen koodi.'); return; }
-  if (!name) { err('join-err','Anna nimimerkki.'); return; }
-
-  const { data, error } = await db.from('visa_games').select('state').eq('id', code).single();
-  if (error || !data) { err('join-err','Peliä ei löydy. Tarkista koodi.'); return; }
-  const state = data.state;
-  if (state.phase !== 'lobby') { err('join-err','Peli on jo alkanut.'); return; }
-  if (state.players.includes(name)) { err('join-err','Nimimerkki on jo käytössä.'); return; }
-  if (state.players.length >= 10) { err('join-err','Peli on täynnä (max 10).'); return; }
-
-  myName = name;
-  gameCode = code;
-  state.players.push(name);
-  state.scores[name] = 0;
-
-  const { error: e2 } = await db.from('visa_games').update({state, updated_at: new Date().toISOString()}).eq('id', code);
-  if (e2) { err('join-err','Virhe liittyessä: ' + e2.message); return; }
-
-  gameState = state;
-  renderWaitPlayers();
-  subscribeToGame();
-  show('screen-player-wait');
-});
-
-// SUBSCRIBE TO REALTIME
-function subscribeToGame() {
-  if (subscription) { db.removeChannel(subscription); }
-  subscription = db.channel('game-' + gameCode)
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'visa_games', filter: `id=eq.${gameCode}` }, payload => {
-      gameState = payload.new.state;
-      handleStateChange();
+function subscribe(){
+  if(sub)db.removeChannel(sub);
+  sub=db.channel('game:'+gameCode)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'visa_games',filter:`id=eq.${gameCode}`},payload=>{
+      const prev=gameState?.phase;
+      gameState=payload.new.state;
+      const cur=gameState.phase;
+      if(cur==='lobby'){if(role==='host')renderLobby();else renderWait();}
+      else if(cur==='answering'){if(prev!=='answering')renderRound();else if(role==='host')renderAnsStatus();}
+      else if(cur==='revealing')renderReveal();
+      else if(cur==='podium')renderPodium();
     })
-    .subscribe();
+    .subscribe(s=>console.log('Realtime:',s));
 }
 
-function handleStateChange() {
-  if (gameState.phase === 'lobby') {
-    if (role === 'host') renderLobbyPlayers();
-    else renderWaitPlayers();
-  } else if (gameState.phase === 'answering') {
-    renderGameRound();
-  } else if (gameState.phase === 'revealing') {
-    renderReveal();
-  } else if (gameState.phase === 'podium') {
-    renderPodium();
-  }
+function renderLobby(){
+  const pl=gameState.players;
+  $('lobby-chips').innerHTML=pl.map(p=>`<span class="chip online">${p===gameState.host?'👑 ':''}${p}</span>`).join('');
+  $('pc').textContent=`(${pl.length}/10)`;
+  $('start-btn').disabled=false;
+  setErr('err-lobby','');
 }
 
-// LOBBY
-function renderLobbyPlayers() {
-  const players = gameState.players;
-  $('lobby-players').innerHTML = players.map(p => `<span class="player-chip">${p === gameState.host ? '👑 ' : ''}${p}</span>`).join('');
-  $('player-count').textContent = `(${players.length}/10)`;
-  $('start-game-btn').disabled = players.length < 2;
-  err('lobby-err', players.length < 2 ? 'Tarvitaan vähintään 2 pelaajaa.' : '');
+function renderWait(){
+  $('wait-chips').innerHTML=(gameState.players||[]).map(p=>`<span class="chip">${p}</span>`).join('');
 }
 
-function renderWaitPlayers() {
-  $('wait-players').innerHTML = (gameState.players || []).map(p => `<span class="player-chip">${p}</span>`).join('');
+$('start-btn').onclick=async()=>{
+  gameState.phase='answering';gameState.currentQ=0;gameState.answers={};gameState.roundPoints={};
+  await push();
+};
+
+async function push(){
+  await db.from('visa_games').update({state:gameState,updated_at:new Date().toISOString()}).eq('id',gameCode);
 }
 
-$('start-game-btn').addEventListener('click', async () => {
-  if (gameState.players.length < 2) return;
-  gameState.phase = 'answering';
-  gameState.currentQ = 0;
-  gameState.answers = {};
-  await pushState();
-});
-
-// PUSH STATE
-async function pushState() {
-  await db.from('visa_games').update({state: gameState, updated_at: new Date().toISOString()}).eq('id', gameCode);
-}
-
-// GAME ROUND
-function renderGameRound() {
-  show('screen-game');
-  const q = gameState.questions[gameState.currentQ];
-  const total = gameState.questions.length;
-  $('game-progress').style.width = ((gameState.currentQ / total) * 100) + '%';
-  $('game-qnum').textContent = `Kysymys ${gameState.currentQ + 1} / ${total}`;
-  $('game-qtext').textContent = q.text;
-
+function renderRound(){
+  show('s-game');
+  const q=gameState.questions[gameState.currentQ];
+  const tot=gameState.questions.length;
+  $('q-label').textContent=`Kysymys ${gameState.currentQ+1} / ${tot}`;
+  $('prog').style.width=((gameState.currentQ/tot)*100)+'%';
+  $('qnum').textContent=`Kysymys ${gameState.currentQ+1}`;
+  $('qtext').textContent=q.text;
   renderScoreboard();
-
-  $('phase-answer').style.display = 'block';
-  $('phase-reveal').style.display = 'none';
-  $('answer-inputs').innerHTML = '';
-
-  if (role === 'host') {
-    $('host-answer-watch').style.display = 'block';
-    $('player-answer-input').style.display = 'none';
-    renderAnswerStatus();
+  $('ph-answer').style.display='block';
+  $('ph-reveal').style.display='none';
+  if(role==='host'){
+    $('hv-answer').style.display='block';$('pv-answer').style.display='none';
+    renderAnsStatus();
   } else {
-    $('host-answer-watch').style.display = 'none';
-    $('player-answer-input').style.display = 'block';
-    $('my-name-label').textContent = myName;
-    $('my-answer').value = '';
-    $('answer-sent-msg').style.display = 'none';
-    $('submit-answer-btn').style.display = 'block';
-    // If I already answered (e.g. re-render)
-    if (gameState.answers && gameState.answers[myName] !== undefined) {
-      $('answer-sent-msg').style.display = 'block';
-      $('submit-answer-btn').style.display = 'none';
+    $('hv-answer').style.display='none';$('pv-answer').style.display='block';
+    $('my-ans').value='';$('sent-msg').style.display='none';$('submit-btn').style.display='inline-flex';
+    if(gameState.answers&&gameState.answers[myName]!==undefined){
+      $('sent-msg').style.display='block';$('submit-btn').style.display='none';
     }
   }
 }
 
-function renderAnswerStatus() {
-  const grid = $('answer-status-grid');
-  const answered = gameState.answers || {};
-  grid.innerHTML = gameState.players.map(p =>
-    `<span class="w-chip ${answered[p] !== undefined ? 'done' : 'waiting'}">${answered[p] !== undefined ? '✓ ' : ''}${p}</span>`
+function renderAnsStatus(){
+  const ans=gameState.answers||{};
+  $('ans-status').innerHTML=gameState.players.map(p=>
+    `<span class="w-chip ${ans[p]!==undefined?'done':'pending'}">${ans[p]!==undefined?'✓ ':''}${p}</span>`
   ).join('');
 }
 
-// Auto-update answer status for host
-function handleStateChangeGame() {
-  if (gameState.phase === 'answering' && role === 'host') {
-    renderAnswerStatus();
-    renderScoreboard();
+$('submit-btn').onclick=async()=>{
+  const val=$('my-ans').value.trim();
+  if(val===''||isNaN(+val))return;
+  const {data}=await db.from('visa_games').select('state').eq('id',gameCode).single();
+  const latest=data?data.state:gameState;
+  if(!latest.answers)latest.answers={};
+  latest.answers[myName]=+val;
+  gameState=latest;
+  await push();
+  $('sent-msg').style.display='block';$('submit-btn').style.display='none';
+};
+
+$('host-reveal-btn').onclick=async()=>{
+  const {data}=await db.from('visa_games').select('state').eq('id',gameCode).single();
+  const latest=data?data.state:gameState;
+  calcPoints(latest);
+  latest.phase='revealing';
+  gameState=latest;
+  await push();
+};
+
+function calcPoints(st){
+  const correct=st.questions[st.currentQ].answer;
+  const ans=st.answers||{};
+  const pl=st.players;
+  const rp={};
+  pl.forEach(p=>rp[p]=0);
+  const exact=pl.filter(p=>ans[p]!==undefined&&ans[p]===correct);
+  exact.forEach(p=>{st.scores[p]=(st.scores[p]||0)+2;rp[p]=2;});
+  const nonExact=pl.filter(p=>ans[p]!==undefined&&ans[p]!==correct);
+  if(nonExact.length){
+    const diffs=nonExact.map(p=>Math.abs(ans[p]-correct));
+    const minD=Math.min(...diffs);
+    nonExact.forEach((p,i)=>{if(diffs[i]===minD){st.scores[p]=(st.scores[p]||0)+1;rp[p]=1;}});
   }
+  st.roundPoints=rp;
 }
 
-// Override handleStateChange to also update mid-round
-const _orig = handleStateChange;
-// (handled inline below)
-
-// SUBMIT ANSWER (player)
-$('submit-answer-btn').addEventListener('click', async () => {
-  const val = $('my-answer').value.trim();
-  if (val === '' || isNaN(+val)) return;
-  if (!gameState.answers) gameState.answers = {};
-  // Fetch latest state first to avoid overwrite
-  const { data } = await db.from('visa_games').select('state').eq('id', gameCode).single();
-  if (data) {
-    const latest = data.state;
-    if (!latest.answers) latest.answers = {};
-    latest.answers[myName] = +val;
-    gameState = latest;
-    await pushState();
-  }
-  $('answer-sent-msg').style.display = 'block';
-  $('submit-answer-btn').style.display = 'none';
-});
-
-// REVEAL (host)
-$('host-reveal-btn').addEventListener('click', async () => {
-  const { data } = await db.from('visa_games').select('state').eq('id', gameCode).single();
-  const latest = data ? data.state : gameState;
-  computePoints(latest);
-  latest.phase = 'revealing';
-  gameState = latest;
-  await pushState();
-});
-
-function computePoints(state) {
-  const q = state.questions[state.currentQ];
-  const correct = q.answer;
-  const answers = state.answers || {};
-  const players = state.players;
-
-  const exact = players.filter(p => answers[p] !== undefined && answers[p] === correct);
-  exact.forEach(p => { state.scores[p] = (state.scores[p]||0) + 2; });
-
-  const nonExact = players.filter(p => answers[p] !== undefined && answers[p] !== correct);
-  if (nonExact.length > 0) {
-    const diffs = nonExact.map(p => Math.abs(answers[p] - correct));
-    const minDiff = Math.min(...diffs);
-    nonExact.filter((p,i) => diffs[i] === minDiff).forEach(p => { state.scores[p] = (state.scores[p]||0) + 1; });
-  }
-  state.roundPoints = {};
-  players.forEach(p => {
-    const before = (state.scores[p]||0);
-    state.roundPoints[p] = exact.includes(p) ? 2 : (nonExact.filter((x,i) => { const diffs2 = nonExact.map(q2=>Math.abs(answers[q2]-correct)); return x===p && diffs2[i]===Math.min(...diffs2); }).length ? 1 : 0);
-  });
-  // Re-compute cleanly
-  players.forEach(p => state.scores[p] = state.scores[p] || 0);
-}
-
-function renderReveal() {
-  show('screen-game');
-  $('phase-answer').style.display = 'none';
-  $('phase-reveal').style.display = 'block';
-
-  const q = gameState.questions[gameState.currentQ];
-  $('reveal-correct').textContent = q.answer;
-
+function renderReveal(){
+  show('s-game');
+  $('ph-answer').style.display='none';$('ph-reveal').style.display='block';
+  $('rev-correct').textContent=gameState.questions[gameState.currentQ].answer;
   renderScoreboard();
-
-  const results = $('reveal-results');
-  results.innerHTML = '';
-  const answers = gameState.answers || {};
-  const roundPoints = gameState.roundPoints || {};
-
-  gameState.players.forEach(p => {
-    const ans = answers[p];
-    const pts = roundPoints[p] || 0;
-    const cls = pts === 2 ? 'pts2' : pts === 1 ? 'pts1' : 'pts0';
-    const lbl = pts === 2 ? '+2 ✓' : pts === 1 ? '+1 ≈' : '+0';
-    const row = document.createElement('div');
-    row.className = 'ans-row';
-    row.innerHTML = `<span class="pname">${p}</span><input type="number" value="${ans !== undefined ? ans : '—'}" disabled style="flex:1;"/><span class="result ${cls}">${lbl}</span>`;
-    results.appendChild(row);
+  const ans=gameState.answers||{};const rp=gameState.roundPoints||{};
+  $('rev-results').innerHTML='';
+  gameState.players.forEach(p=>{
+    const v=ans[p];const pts=rp[p]||0;
+    const cls=pts===2?'pts2':pts===1?'pts1':'pts0';
+    const lbl=pts===2?'+2 ✓':pts===1?'+1 ≈':'+0';
+    const row=document.createElement('div');row.className='ans-row';
+    row.innerHTML=`<span class="pn">${p}</span><input type="number" value="${v!==undefined?v:'—'}" disabled style="flex:1;"/><span class="res ${cls}">${lbl}</span>`;
+    $('rev-results').appendChild(row);
   });
-
-  if (role === 'host') {
-    $('host-next-actions').style.display = 'flex';
-    $('player-reveal-wait').style.display = 'none';
-    const isLast = gameState.currentQ >= gameState.questions.length - 1;
-    $('host-next-btn').textContent = isLast ? 'Näytä tulokset 🏆' : 'Seuraava →';
+  if(role==='host'){
+    $('host-next-wrap').style.display='flex';$('player-wait-msg').style.display='none';
+    const last=gameState.currentQ>=gameState.questions.length-1;
+    $('next-btn').textContent=last?'Näytä tulokset 🏆':'Seuraava →';
   } else {
-    $('host-next-actions').style.display = 'none';
-    $('player-reveal-wait').style.display = 'block';
+    $('host-next-wrap').style.display='none';$('player-wait-msg').style.display='block';
   }
 }
 
-$('host-next-btn').addEventListener('click', async () => {
-  const { data } = await db.from('visa_games').select('state').eq('id', gameCode).single();
-  const latest = data ? data.state : gameState;
-  if (latest.currentQ >= latest.questions.length - 1) {
-    latest.phase = 'podium';
-  } else {
-    latest.currentQ += 1;
-    latest.answers = {};
-    latest.roundPoints = {};
-    latest.phase = 'answering';
-  }
-  gameState = latest;
-  await pushState();
-});
+$('next-btn').onclick=async()=>{
+  const {data}=await db.from('visa_games').select('state').eq('id',gameCode).single();
+  const latest=data?data.state:gameState;
+  if(latest.currentQ>=latest.questions.length-1){latest.phase='podium';}
+  else{latest.currentQ+=1;latest.answers={};latest.roundPoints={};latest.phase='answering';}
+  gameState=latest;await push();
+};
 
-function renderScoreboard() {
-  const sb = $('game-scoreboard');
-  sb.innerHTML = gameState.players.map(p =>
-    `<div class="score-badge${p===myName?' me':''}"><span class="sname">${p}</span><span class="spts">${gameState.scores[p]||0}</span></div>`
+function renderScoreboard(){
+  $('scoreboard').innerHTML=gameState.players.map(p=>
+    `<div class="sbadge${p===myName?' me':''}"><span class="sn">${p}</span><span class="sp">${gameState.scores[p]||0}</span></div>`
   ).join('');
 }
 
-// PODIUM
-function renderPodium() {
-  show('screen-podium');
-  const sorted = [...gameState.players].sort((a,b) => (gameState.scores[b]||0) - (gameState.scores[a]||0));
-  const podiumEl = $('podium-el');
-  podiumEl.innerHTML = '';
-  const otherEl = $('other-results-el');
-  otherEl.innerHTML = '';
-
-  const mc = ['#C0C0C0','#F5C842','#cd7f32'];
-  const mh = ['110px','150px','80px'];
-  const mn = ['2','1','3'];
-  const mtc = ['#444','#1a1400','#2a1200'];
-
-  const top3 = sorted.slice(0,3);
-  const podOrder = top3.length===1 ? [null,top3[0],null] :
-                   top3.length===2 ? [top3[1],top3[0],null] :
-                   [top3[1],top3[0],top3[2]];
-
-  podOrder.forEach((p,i) => {
-    if (!p) return;
-    const block = document.createElement('div');
-    block.className = 'podium-block';
-    block.style.order = i;
-    block.innerHTML = `<div class="p-avatar" style="background:${mc[i]};color:${mtc[i]};">${p.slice(0,2).toUpperCase()}</div>
-      <div class="p-name">${p}</div><div class="p-pts">${gameState.scores[p]||0} pist.</div>
-      <div class="p-stand" style="height:${mh[i]};background:${mc[i]};">${mn[i]}</div>`;
-    podiumEl.appendChild(block);
+function renderPodium(){
+  show('s-podium');
+  const sorted=[...gameState.players].sort((a,b)=>(gameState.scores[b]||0)-(gameState.scores[a]||0));
+  const mc=['#94A3B8','#F59E0B','#B45309'];
+  const mh=['100px','140px','75px'];
+  const mn=['2','1','3'];
+  const top3=sorted.slice(0,3);
+  const ord=top3.length===1?[null,top3[0],null]:top3.length===2?[top3[1],top3[0],null]:[top3[1],top3[0],top3[2]];
+  $('podium').innerHTML='';
+  ord.forEach((p,i)=>{
+    if(!p)return;
+    const b=document.createElement('div');b.className='pb';b.style.order=i;
+    b.innerHTML=`<div class="pb-av" style="background:${mc[i]};color:#fff;">${p.slice(0,2).toUpperCase()}</div>
+      <div class="pb-name">${p}</div><div class="pb-pts">${gameState.scores[p]||0} pist.</div>
+      <div class="pb-stand" style="height:${mh[i]};background:${mc[i]};">${mn[i]}</div>`;
+    $('podium').appendChild(b);
   });
-
-  if (sorted.length > 3) {
-    sorted.slice(3).forEach((p,i) => {
-      const row = document.createElement('div');
-      row.className = 'other-row';
-      row.innerHTML = `<span class="orank">${i+4}.</span><span>${p}</span><span class="opts">${gameState.scores[p]||0} pist.</span>`;
-      otherEl.appendChild(row);
-    });
-  }
+  $('others').innerHTML='';
+  sorted.slice(3).forEach((p,i)=>{
+    const r=document.createElement('div');r.className='o-row';
+    r.innerHTML=`<span class="or">${i+4}.</span><span>${p}</span><span class="op">${gameState.scores[p]||0} pist.</span>`;
+    $('others').appendChild(r);
+  });
 }
 
-$('play-again-btn').addEventListener('click', () => {
-  if (subscription) db.removeChannel(subscription);
-  gameCode = null; myName = null; gameState = null; role = null; questions = [];
-  show('screen-role');
-});
-
-// Override subscription handler for mid-round updates
-db && (() => {
-  const origSub = subscribeToGame;
-  // patch: re-bind with extended handler
-  window._patchedSubscribe = true;
-})();
-
-// Re-bind subscribeToGame with full handler
-function subscribeToGame() {
-  if (subscription) { db.removeChannel(subscription); }
-  subscription = db.channel('game-' + gameCode)
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'visa_games', filter: `id=eq.${gameCode}` }, payload => {
-      const newState = payload.new.state;
-      const prevPhase = gameState ? gameState.phase : null;
-      gameState = newState;
-
-      if (newState.phase === 'lobby') {
-        if (role === 'host') renderLobbyPlayers();
-        else renderWaitPlayers();
-      } else if (newState.phase === 'answering') {
-        if (prevPhase !== 'answering') {
-          renderGameRound();
-        } else if (role === 'host') {
-          renderAnswerStatus();
-        }
-      } else if (newState.phase === 'revealing') {
-        renderReveal();
-      } else if (newState.phase === 'podium') {
-        renderPodium();
-      }
-    })
-    .subscribe();
-}
+$('again-btn').onclick=()=>{
+  if(sub)db.removeChannel(sub);
+  role=null;gameCode=null;myName=null;gameState=null;sub=null;questions=[];
+  show('s-role');
+};
 </script>
 </body>
 </html>

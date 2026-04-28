@@ -179,7 +179,8 @@ textarea{resize:vertical;min-height:58px;}
     <div class="ct"><span class="ctbadge">👥</span>Liittyneet <span id="pcount" style="color:var(--muted);font-weight:500;font-size:.8rem;margin-left:.2rem;"></span></div>
     <div class="chips" id="lobby-chips"></div>
     <div class="divider"></div>
-    <div class="row-end">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
+      <button class="btn btn-s" id="leave-lobby-btn" style="font-size:.78rem;color:var(--muted);">✕ Poistu</button>
       <button class="btn btn-p" id="start-btn">Aloita peli ▶</button>
     </div>
     <p class="err" id="e-lobby"></p>
@@ -256,6 +257,10 @@ textarea{resize:vertical;min-height:58px;}
       <div class="statsub"><span class="dot"></span>Peli käynnistyy kun isäntä aloittaa</div>
     </div>
     <div class="chips" id="pwait-chips" style="margin-top:.65rem;justify-content:center;"></div>
+    <div class="divider"></div>
+    <div style="text-align:center;">
+      <button class="btn btn-s" id="leave-pwait" style="font-size:.78rem;color:var(--muted);">✕ Poistu pelitilasta</button>
+    </div>
   </div>
 </div>
 
@@ -266,7 +271,10 @@ textarea{resize:vertical;min-height:58px;}
     <!-- Header row -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;">
       <span id="qlabel" style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;"></span>
-      <div class="prog" style="width:100px;"><div class="progbar" id="progbar"></div></div>
+      <div style="display:flex;align-items:center;gap:.7rem;">
+        <div class="prog" style="width:80px;"><div class="progbar" id="progbar"></div></div>
+        <button id="leave-game-btn" title="Poistu" style="background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:.75rem;padding:.2rem .55rem;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;" onclick="confirmLeave()">✕ Poistu</button>
+      </div>
     </div>
     <!-- Scoreboard -->
     <div class="sb" id="scoreboard"></div>
@@ -726,6 +734,31 @@ $('again-btn').onclick=()=>{
   S={role:null,code:null,name:null,game:null,sub:null,pollTimer:null,questions:[]};
   show('s-role');
 };
+
+// ─── LEAVE / EXIT ────────────────────────────────────────────────────────────
+function confirmLeave(){
+  const msg=S.role==='host'
+    ? 'Poistu pelitilasta? Peli tallentuu ja voit jatkaa myöhemmin Aiemmat pelit -valikosta.'
+    : 'Poistu pelistä? Voit liittyä takaisin samalla koodilla ja nimimerkillä jos peli on vielä käynnissä.';
+  if(!confirm(msg))return;
+  doLeave();
+}
+
+function doLeave(){
+  stopSync();
+  clearLocal();
+  S={role:null,code:null,name:null,game:null,sub:null,pollTimer:null,questions:[]};
+  show('s-role');
+}
+
+document.addEventListener('click',e=>{
+  if(e.target.id==='leave-lobby-btn'){
+    if(confirm('Poistu lobbystä? Peli tallentuu Aiemmat pelit -listaan.'))doLeave();
+  }
+  if(e.target.id==='leave-pwait'){
+    if(confirm('Poistu odotusnäytöltä? Voit liittyä takaisin samalla koodilla.'))doLeave();
+  }
+});
 
 // ─── SAVED GAMES ────────────────────────────────────────────────────────────
 // Show saved games button on role screen

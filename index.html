@@ -125,6 +125,10 @@ textarea{resize:vertical;min-height:58px;}
 .copybtn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:.7rem;padding:.2rem .5rem;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:color .15s,border-color .15s;}
 .copybtn:hover{color:var(--accent);border-color:var(--accent);}
 .secttitle{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem;}
+.score-edit-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.42rem;}
+.score-edit-row .sen{min-width:100px;font-size:.85rem;font-weight:600;}
+.score-edit-row input{width:90px;flex:none;}
+.sgrow-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -193,6 +197,36 @@ textarea{resize:vertical;min-height:58px;}
       <button class="btn btn-s" id="back-saved">← Takaisin</button>
     </div>
   </div>
+</div>
+
+<!-- EDIT GAME -->
+<div id="s-edit" class="screen">
+  <div class="logo"><h1>Kuinka Monta?</h1><p>Muokkaa peliä</p></div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">✏️</span>Pelin koodi: <span id="edit-code-lbl" style="color:var(--accent);letter-spacing:.1em;font-weight:800;margin-left:.2rem;"></span></div>
+    <label>Isännän nimi</label>
+    <input type="text" id="edit-host-name" placeholder="Isäntä" maxlength="20"/>
+    <p class="err" id="e-edit-name"></p>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">❓</span>Kysymykset</div>
+    <div id="edit-qlist"></div>
+    <button class="btn btn-s" id="edit-add-q">+ Lisää kysymys</button>
+    <p class="err" id="e-edit-q"></p>
+  </div>
+  <div class="card" id="edit-scores-card">
+    <div class="ct"><span class="ctbadge">🏆</span>Pisteet <span style="font-size:.72rem;color:var(--muted);font-weight:500;margin-left:.3rem;">(voi nollata)</span></div>
+    <div id="edit-scores-list"></div>
+  </div>
+  <div style="display:flex;gap:.5rem;justify-content:space-between;flex-wrap:wrap;">
+    <button class="btn btn-s" id="back-edit">← Takaisin</button>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn btn-s" id="edit-reset-scores" style="color:var(--red);border-color:#FECACA;">🗑 Nollaa pisteet</button>
+      <button class="btn btn-p" id="edit-save-btn">💾 Tallenna muutokset</button>
+    </div>
+  </div>
+  <p class="err" id="e-edit-save" style="text-align:right;"></p>
+  <p id="edit-saved-ok" style="display:none;color:var(--green);font-size:.82rem;font-weight:600;text-align:right;">✓ Tallennettu!</p>
 </div>
 
 <!-- JOIN -->
@@ -720,15 +754,125 @@ async function loadSaved(){
     const g=row.state;
     const phaseLabel={lobby:'Lobbyssa',answering:'Käynnissä',revealing:'Vastaukset',podium:'Päättynyt'}[g.phase]||g.phase;
     const d=document.createElement('div');d.className='sgrow';
-    d.innerHTML=`<div>
+    d.style.cursor='default';
+    d.innerHTML=`<div style="flex:1;min-width:0;">
       <div class="sgcode">${row.id}</div>
       <div class="sginfo">Isäntä: ${g.host} · ${g.players.length} pelaajaa · Q${g.currentQ+1}/${g.questions.length} · ${fmtDate(row.updated_at)}</div>
     </div>
-    <span class="sgbadge">${phaseLabel}</span>`;
-    d.onclick=()=>rejoinAsHost(row.id,g);
+    <div class="sgrow-actions">
+      <span class="sgbadge">${phaseLabel}</span>
+      <button class="btn btn-s edit-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">✏️ Muokkaa</button>
+      <button class="btn btn-p open-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">▶ Avaa</button>
+    </div>`;
     sl.appendChild(d);
   });
+
+  // Bind buttons
+  sl.querySelectorAll('.open-game-btn').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    const g2=await loadGame(btn.dataset.code);
+    if(g2)rejoinAsHost(btn.dataset.code,g2);
+  });
+  sl.querySelectorAll('.edit-game-btn').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    const g2=await loadGame(btn.dataset.code);
+    if(g2)openEdit(btn.dataset.code,g2);
+  });
 }
+
+// ─── EDIT GAME ───────────────────────────────────────────────────────────────
+let editCode=null;
+let editGame=null;
+let editQuestions=[];
+
+function openEdit(code,g){
+  editCode=code;
+  editGame=JSON.parse(JSON.stringify(g)); // deep copy
+  editQuestions=editGame.questions.map(q=>({text:q.text,answer:q.answer}));
+
+  $('edit-code-lbl').textContent=code;
+  $('edit-host-name').value=editGame.host||'';
+  setErr('e-edit-name','');
+  setErr('e-edit-q','');
+  $('edit-saved-ok').style.display='none';
+  renderEditQ();
+  renderEditScores();
+  show('s-edit');
+}
+
+function renderEditQ(){
+  const l=$('edit-qlist');l.innerHTML='';
+  editQuestions.forEach((q,i)=>{
+    const b=document.createElement('div');b.className='qblock';
+    b.innerHTML=`<div class="qhead"><span>Kysymys ${i+1}</span><button data-i="${i}" class="rmq-e">✕</button></div>
+      <label>Kysymys</label>
+      <textarea data-f="text" data-i="${i}" placeholder="Kysymys...">${q.text}</textarea>
+      <div class="qgrid">
+        <div><label>Oikea vastaus (numero)</label><input type="number" data-f="answer" data-i="${i}" value="${q.answer}" placeholder="0"/></div>
+      </div>`;
+    l.appendChild(b);
+  });
+  l.querySelectorAll('[data-f]').forEach(el=>el.oninput=()=>{editQuestions[+el.dataset.i][el.dataset.f]=el.value;});
+  l.querySelectorAll('.rmq-e').forEach(b=>b.onclick=()=>{editQuestions.splice(+b.dataset.i,1);renderEditQ();});
+}
+
+function renderEditScores(){
+  const sl=$('edit-scores-list');sl.innerHTML='';
+  (editGame.players||[]).forEach(p=>{
+    const row=document.createElement('div');row.className='score-edit-row';
+    row.innerHTML=`<span class="sen">${p}</span>
+      <input type="number" value="${editGame.scores[p]||0}" data-player="${p}" style="width:90px;"/>
+      <span style="font-size:.75rem;color:var(--muted);">pist.</span>`;
+    sl.appendChild(row);
+  });
+  sl.querySelectorAll('[data-player]').forEach(inp=>inp.oninput=()=>{
+    editGame.scores[inp.dataset.player]=+inp.value||0;
+  });
+}
+
+$('edit-add-q').onclick=()=>{editQuestions.push({text:'',answer:''});renderEditQ();};
+
+$('edit-reset-scores').onclick=()=>{
+  if(!confirm('Nollataan kaikkien pisteet?'))return;
+  (editGame.players||[]).forEach(p=>editGame.scores[p]=0);
+  renderEditScores();
+};
+
+$('back-edit').onclick=()=>{show('s-saved');loadSaved();};
+
+$('edit-save-btn').onclick=async()=>{
+  const newHost=$('edit-host-name').value.trim();
+  setErr('e-edit-name','');setErr('e-edit-q','');
+  $('edit-saved-ok').style.display='none';
+
+  if(!newHost){setErr('e-edit-name','Anna isännän nimi.');return;}
+  const vq=editQuestions.filter(q=>String(q.text).trim()&&q.answer!==''&&!isNaN(+q.answer));
+  if(!vq.length){setErr('e-edit-q','Vähintään yksi kelvollinen kysymys tarvitaan.');return;}
+
+  // Apply edits
+  editGame.host=newHost;
+  editGame.questions=vq.map(q=>({text:String(q.text).trim(),answer:+q.answer}));
+
+  // Fix currentQ if out of bounds
+  if(editGame.currentQ>=editGame.questions.length){
+    editGame.currentQ=Math.max(0,editGame.questions.length-1);
+  }
+
+  // If host name changed, update players array too
+  const oldHost=S.game?.host||editGame.players?.[0];
+  if(oldHost&&oldHost!==newHost&&editGame.players.includes(oldHost)){
+    const idx=editGame.players.indexOf(oldHost);
+    editGame.players[idx]=newHost;
+    editGame.scores[newHost]=editGame.scores[oldHost]||0;
+    if(oldHost!==newHost)delete editGame.scores[oldHost];
+  }
+
+  const {error}=await db.from('visa_games').update({state:editGame,updated_at:new Date().toISOString()}).eq('id',editCode);
+  if(error){setErr('e-edit-save','Virhe tallennuksessa: '+error.message);return;}
+
+  $('edit-saved-ok').style.display='block';
+  setTimeout(()=>$('edit-saved-ok').style.display='none',2500);
+};
 
 async function rejoinAsHost(code,g){
   S.role='host'; S.code=code; S.name=g.host; S.game=g;

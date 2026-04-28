@@ -795,6 +795,7 @@ async function loadSaved(){
     <div class="sgrow-actions">
       <span class="sgbadge">${phaseLabel}</span>
       <button class="btn btn-s edit-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">✏️ Muokkaa</button>
+      <button class="btn btn-s replay-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">🔄 Uusinta</button>
       <button class="btn btn-p open-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">▶ Avaa</button>
     </div>`;
     sl.appendChild(d);
@@ -805,6 +806,11 @@ async function loadSaved(){
     e.stopPropagation();
     const g2=await loadGame(btn.dataset.code);
     if(g2)rejoinAsHost(btn.dataset.code,g2);
+  });
+  sl.querySelectorAll('.replay-game-btn').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    const g2=await loadGame(btn.dataset.code);
+    if(g2)replayGame(btn.dataset.code,g2);
   });
   sl.querySelectorAll('.edit-game-btn').forEach(btn=>btn.onclick=async e=>{
     e.stopPropagation();
@@ -912,6 +918,31 @@ async function rejoinAsHost(code,g){
   saveLocal();
   startSync();
   route(null);
+}
+
+async function replayGame(oldCode,g){
+  if(!confirm(`Pelaa uudelleen kysymykset pelistä ${oldCode}?\nPisteet ja vastaukset nollataan, ja peli saa uuden koodin.`))return;
+
+  // Build fresh state from old game's questions + host
+  const newCode=genCode();
+  const freshState={
+    phase:'lobby',
+    host:g.host,
+    players:[g.host],
+    scores:{[g.host]:0},
+    questions:g.questions, // keep same questions
+    currentQ:0,
+    answers:{},
+    roundPoints:{}
+  };
+
+  const {error}=await db.from('visa_games').insert({id:newCode,state:freshState,updated_at:new Date().toISOString()});
+  if(error){alert('Virhe luodessa uutta peliä: '+error.message);return;}
+
+  S.role='host'; S.code=newCode; S.name=g.host; S.game=freshState;
+  saveLocal();
+  showLobby();
+  startSync();
 }
 
 // ─── BOOT ────────────────────────────────────────────────────────────────────

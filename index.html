@@ -629,16 +629,20 @@ function calcPoints(g){
   const rp={};
   g.players.forEach(p=>rp[p]=0);
 
-  // +2 exact
-  g.players.filter(p=>ans[p]!==undefined&&ans[p]===correct)
-    .forEach(p=>{g.scores[p]=(g.scores[p]||0)+2;rp[p]=2;});
+  // +2 for exact answers
+  const exact=g.players.filter(p=>ans[p]!==undefined&&ans[p]===correct);
+  exact.forEach(p=>{g.scores[p]=(g.scores[p]||0)+2;rp[p]=2;});
 
-  // +1 closest among non-exact
-  const ne=g.players.filter(p=>ans[p]!==undefined&&ans[p]!==correct);
-  if(ne.length){
-    const diffs=ne.map(p=>Math.abs(ans[p]-correct));
-    const minD=Math.min(...diffs);
-    ne.forEach((p,i)=>{if(diffs[i]===minD){g.scores[p]=(g.scores[p]||0)+1;rp[p]=1;}});
+  // +1 for closest ONLY if nobody got exact — all tied for closest also get it
+  if(exact.length===0){
+    const answered=g.players.filter(p=>ans[p]!==undefined);
+    if(answered.length){
+      const diffs=answered.map(p=>Math.abs(ans[p]-correct));
+      const minD=Math.min(...diffs);
+      answered.forEach((p,i)=>{
+        if(diffs[i]===minD){g.scores[p]=(g.scores[p]||0)+1;rp[p]=1;}
+      });
+    }
   }
   g.roundPoints=rp;
 }

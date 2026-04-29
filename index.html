@@ -138,7 +138,7 @@ textarea{resize:vertical;min-height:58px;}
   <div class="logo"><h1>Kuinka Monta?</h1><p>Numero-arvauspeli verkossa</p></div>
   <div class="card">
     <div class="role-grid">
-      <div class="rbtn" id="btn-host"><div class="ricon">👑</div><div class="rl">Isäntä</div><div class="rs">Luo uusi peli</div></div>
+      <div class="rbtn" id="btn-host"><div class="ricon">👑</div><div class="rl">Juontaja</div><div class="rs">Luo uusi peli</div></div>
       <div class="rbtn" id="btn-join"><div class="ricon">🎮</div><div class="rl">Pelaaja</div><div class="rs">Liity koodilla</div></div>
     </div>
   </div>
@@ -148,7 +148,7 @@ textarea{resize:vertical;min-height:58px;}
 <div id="s-setup" class="screen">
   <div class="logo"><h1>Kuinka Monta?</h1><p>Uusi peli</p></div>
   <div class="card">
-    <div class="ct"><span class="ctbadge">👤</span>Isännän nimi</div>
+    <div class="ct"><span class="ctbadge">👤</span>Juontajan nimi</div>
     <label>Nimimerkki</label>
     <input type="text" id="host-name" placeholder="esim. Pekka" maxlength="20"/>
     <p class="err" id="e-hname"></p>
@@ -185,18 +185,10 @@ textarea{resize:vertical;min-height:58px;}
     </div>
     <p class="err" id="e-lobby"></p>
   </div>
-</div>
-
-<!-- SAVED GAMES (host) -->
-<div id="s-saved" class="screen">
-  <div class="logo"><h1>Kuinka Monta?</h1><p>Tallennetut pelit</p></div>
-  <div class="card">
+  <!-- SAVED GAMES inline -->
+  <div class="card" id="saved-card" style="display:none;">
     <div class="ct"><span class="ctbadge">📂</span>Aiemmat pelit</div>
-    <div id="saved-list"><div style="color:var(--muted);font-size:.85rem;">Ladataan...</div></div>
-    <div class="divider"></div>
-    <div class="row-end">
-      <button class="btn btn-s" id="back-saved">← Takaisin</button>
-    </div>
+    <div id="saved-list"><div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div></div>
   </div>
 </div>
 
@@ -205,8 +197,8 @@ textarea{resize:vertical;min-height:58px;}
   <div class="logo"><h1>Kuinka Monta?</h1><p>Muokkaa peliä</p></div>
   <div class="card">
     <div class="ct"><span class="ctbadge">✏️</span>Pelin koodi: <span id="edit-code-lbl" style="color:var(--accent);letter-spacing:.1em;font-weight:800;margin-left:.2rem;"></span></div>
-    <label>Isännän nimi</label>
-    <input type="text" id="edit-host-name" placeholder="Isäntä" maxlength="20"/>
+    <label>Juontajan nimi</label>
+    <input type="text" id="edit-host-name" placeholder="Juontaja" maxlength="20"/>
     <p class="err" id="e-edit-name"></p>
   </div>
   <div class="card">
@@ -218,6 +210,10 @@ textarea{resize:vertical;min-height:58px;}
   <div class="card" id="edit-scores-card">
     <div class="ct"><span class="ctbadge">🏆</span>Pisteet <span style="font-size:.72rem;color:var(--muted);font-weight:500;margin-left:.3rem;">(voi nollata)</span></div>
     <div id="edit-scores-list"></div>
+  </div>
+  <div class="card" id="edit-archive-card" style="display:none;">
+    <div class="ct"><span class="ctbadge">📜</span>Aiemmat kierrokset</div>
+    <div id="edit-archive-list"></div>
   </div>
   <div style="display:flex;gap:.5rem;justify-content:space-between;flex-wrap:wrap;">
     <button class="btn btn-s" id="back-edit">← Takaisin</button>
@@ -253,8 +249,8 @@ textarea{resize:vertical;min-height:58px;}
   <div class="logo"><h1>Kuinka Monta?</h1></div>
   <div class="card">
     <div class="statbox">
-      <div class="statbig">Odotetaan isäntää...</div>
-      <div class="statsub"><span class="dot"></span>Peli käynnistyy kun isäntä aloittaa</div>
+      <div class="statbig">Odotetaan juontajaa...</div>
+      <div class="statsub"><span class="dot"></span>Peli käynnistyy kun juontaja aloittaa</div>
     </div>
     <div class="chips" id="pwait-chips" style="margin-top:.65rem;justify-content:center;"></div>
     <div class="divider"></div>
@@ -313,7 +309,7 @@ textarea{resize:vertical;min-height:58px;}
         <button class="btn btn-p" id="next-btn">Seuraava →</button>
       </div>
       <!-- Player: wait -->
-      <p id="player-next-wait" style="display:none;color:var(--muted);font-size:.8rem;margin-top:.75rem;"><span class="dot"></span>Odotetaan isäntää...</p>
+      <p id="player-next-wait" style="display:none;color:var(--muted);font-size:.8rem;margin-top:.75rem;"><span class="dot"></span>Odotetaan juontajaa...</p>
     </div>
   </div>
 </div>
@@ -472,8 +468,8 @@ $('create-btn').onclick=async()=>{
   S.game={
     phase:'lobby',
     host:name,
-    players:[name],
-    scores:{[name]:0},
+    players:[],
+    scores:{},
     questions:vq.map(q=>({text:q.text.trim(),answer:+q.answer})),
     currentQ:0,
     answers:{},
@@ -492,9 +488,12 @@ $('create-btn').onclick=async()=>{
 function showLobby(){
   show('s-lobby');
   $('show-code').textContent=S.code;
-  $('lobby-chips').innerHTML=S.game.players.map(p=>`<span class="chip chip-ok">${p===S.game.host?'👑 ':''}${p}</span>`).join('');
-  $('pcount').textContent=`(${S.game.players.length}/10)`;
+  const hostChip=`<span class="chip" style="background:var(--accent-l);border-color:#A5B4FC;color:var(--accent);">👑 ${S.game.host} (juontaja)</span>`;
+  const playerChips=S.game.players.map(p=>`<span class="chip chip-ok">${p}</span>`).join('');
+  $('lobby-chips').innerHTML=hostChip+playerChips;
+  $('pcount').textContent=`(${S.game.players.length} pelaajaa)`;
   setErr('e-lobby','');
+  loadSaved();
 }
 
 $('copy-code').onclick=()=>{
@@ -561,24 +560,24 @@ function showGame(){
   $('ph-ans').style.display='block';
   $('ph-rev').style.display='none';
 
-  // Answer input — everyone (including host) can answer
-  $('ans-input-wrap').style.display='block';
-  $('my-ans').value='';
-  $('sent-ok').style.display='none';
-  $('send-ans').style.display='inline-flex';
-
-  // If I already answered
-  if(S.game.answers&&S.game.answers[S.name]!==undefined){
-    $('sent-ok').style.display='block';
-    $('send-ans').style.display='none';
-  }
-
-  // Host also sees the status panel
   if(S.role==='host'){
+    // Host: only sees status panel, no answer input
+    $('ans-input-wrap').style.display='none';
     $('host-status-wrap').style.display='block';
     renderAnsStatus();
   } else {
+    // Player: answer input, no status panel
+    $('ans-input-wrap').style.display='block';
+    $('my-ans').value='';
+    $('sent-ok').style.display='none';
+    $('send-ans').style.display='inline-flex';
     $('host-status-wrap').style.display='none';
+
+    // Already answered?
+    if(S.game.answers&&S.game.answers[S.name]!==undefined){
+      $('sent-ok').style.display='block';
+      $('send-ans').style.display='none';
+    }
   }
 }
 
@@ -761,47 +760,40 @@ document.addEventListener('click',e=>{
 });
 
 // ─── SAVED GAMES ────────────────────────────────────────────────────────────
-// Show saved games button on role screen
-const savedBtn=document.createElement('div');
-savedBtn.style='text-align:center;margin-top:-.2rem;';
-savedBtn.innerHTML='<button class="btn btn-s" id="saved-btn" style="font-size:.78rem;padding:.4rem 1rem;">📂 Aiemmat pelit</button>';
-document.getElementById('s-role').appendChild(savedBtn);
-
-document.addEventListener('click',async e=>{
-  if(e.target.id==='saved-btn'){
-    show('s-saved');
-    await loadSaved();
-  }
-});
-
 async function loadSaved(){
+  const card=$('saved-card');
   const sl=$('saved-list');
-  sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;">Ladataan...</div>';
+  sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div>';
+  card.style.display='none';
   const {data,error}=await db.from('visa_games').select('id,state,updated_at').order('updated_at',{ascending:false}).limit(20);
-  if(error||!data||!data.length){
-    sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;">Ei tallennettuja pelejä.</div>';
+  // Filter out current game
+  const others=(data||[]).filter(r=>r.id!==S.code);
+  if(error||!others.length){
+    card.style.display='none';
     return;
   }
+  card.style.display='block';
   sl.innerHTML='';
-  data.forEach(row=>{
+  others.forEach(row=>{
     const g=row.state;
     const phaseLabel={lobby:'Lobbyssa',answering:'Käynnissä',revealing:'Vastaukset',podium:'Päättynyt'}[g.phase]||g.phase;
+    // Build archived rounds summary if exists
+    const archiveInfo=g.archivedRounds?`· ${g.archivedRounds.length} kierrosta arkistoitu`:'';
     const d=document.createElement('div');d.className='sgrow';
     d.style.cursor='default';
-    d.innerHTML=`<div style="flex:1;min-width:0;">
+    d.innerHTML=`<div style="flex:1;min-width:0;overflow:hidden;">
       <div class="sgcode">${row.id}</div>
-      <div class="sginfo">Isäntä: ${g.host} · ${g.players.length} pelaajaa · Q${g.currentQ+1}/${g.questions.length} · ${fmtDate(row.updated_at)}</div>
+      <div class="sginfo">Juontaja: ${g.host} · ${g.players.length} pelj · Q${g.currentQ+1}/${g.questions.length} · ${fmtDate(row.updated_at)} ${archiveInfo}</div>
     </div>
     <div class="sgrow-actions">
       <span class="sgbadge">${phaseLabel}</span>
-      <button class="btn btn-s edit-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">✏️ Muokkaa</button>
-      <button class="btn btn-s replay-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">🔄 Uusinta</button>
-      <button class="btn btn-p open-game-btn" data-code="${row.id}" style="font-size:.73rem;padding:.3rem .65rem;">▶ Avaa</button>
+      <button class="btn btn-s edit-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">✏️</button>
+      <button class="btn btn-s replay-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">🔄 Uusinta</button>
+      <button class="btn btn-p open-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">▶ Avaa</button>
     </div>`;
     sl.appendChild(d);
   });
 
-  // Bind buttons
   sl.querySelectorAll('.open-game-btn').forEach(btn=>btn.onclick=async e=>{
     e.stopPropagation();
     const g2=await loadGame(btn.dataset.code);
@@ -826,7 +818,7 @@ let editQuestions=[];
 
 function openEdit(code,g){
   editCode=code;
-  editGame=JSON.parse(JSON.stringify(g)); // deep copy
+  editGame=JSON.parse(JSON.stringify(g));
   editQuestions=editGame.questions.map(q=>({text:q.text,answer:q.answer}));
 
   $('edit-code-lbl').textContent=code;
@@ -836,7 +828,26 @@ function openEdit(code,g){
   $('edit-saved-ok').style.display='none';
   renderEditQ();
   renderEditScores();
+  renderEditArchive();
   show('s-edit');
+}
+
+function renderEditArchive(){
+  const card=$('edit-archive-card');
+  const rounds=editGame.archivedRounds;
+  if(!rounds||!rounds.length){card.style.display='none';return;}
+  card.style.display='block';
+  const al=$('edit-archive-list');al.innerHTML='';
+  rounds.forEach((r,i)=>{
+    const date=new Date(r.playedAt).toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+    const sorted=Object.entries(r.finalScores||{}).sort((a,b)=>b[1]-a[1]);
+    const scoreStr=sorted.map(([p,s])=>`${p}: ${s} pist.`).join(' · ');
+    const div=document.createElement('div');
+    div.style='background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.4rem;font-size:.78rem;';
+    div.innerHTML=`<div style="font-weight:700;color:var(--accent);margin-bottom:.2rem;">Kierros ${i+1} — ${date}${r.newGameCode?' → '+r.newGameCode:''}</div>
+      <div style="color:var(--muted);">${scoreStr||'Ei pisteitä'}</div>`;
+    al.appendChild(div);
+  });
 }
 
 function renderEditQ(){
@@ -877,14 +888,18 @@ $('edit-reset-scores').onclick=()=>{
   renderEditScores();
 };
 
-$('back-edit').onclick=()=>{show('s-saved');loadSaved();};
+$('back-edit').onclick=()=>{
+  // If we have an active game, go back to lobby; else role screen
+  if(S.code&&S.game){show('s-lobby');loadSaved();}
+  else show('s-role');
+};
 
 $('edit-save-btn').onclick=async()=>{
   const newHost=$('edit-host-name').value.trim();
   setErr('e-edit-name','');setErr('e-edit-q','');
   $('edit-saved-ok').style.display='none';
 
-  if(!newHost){setErr('e-edit-name','Anna isännän nimi.');return;}
+  if(!newHost){setErr('e-edit-name','Anna juontajan nimi.');return;}
   const vq=editQuestions.filter(q=>String(q.text).trim()&&q.answer!==''&&!isNaN(+q.answer));
   if(!vq.length){setErr('e-edit-q','Vähintään yksi kelvollinen kysymys tarvitaan.');return;}
 
@@ -921,21 +936,39 @@ async function rejoinAsHost(code,g){
 }
 
 async function replayGame(oldCode,g){
-  if(!confirm(`Pelaa uudelleen kysymykset pelistä ${oldCode}?\nPisteet ja vastaukset nollataan, ja peli saa uuden koodin.`))return;
+  if(!confirm(`Pelaa uudelleen kysymykset pelistä ${oldCode}?\nVanhan pelin tilastot arkistoidaan ja uusi peli saa uuden koodin.`))return;
 
-  // Build fresh state from old game's questions + host
+  // Archive old game's final scores as a round entry in the old game record
+  const archive={
+    playedAt:new Date().toISOString(),
+    players:g.players,
+    finalScores:g.scores,
+    questions:g.questions,
+    newGameCode:null // will fill after
+  };
+  const oldWithArchive=JSON.parse(JSON.stringify(g));
+  if(!oldWithArchive.archivedRounds)oldWithArchive.archivedRounds=[];
+  oldWithArchive.archivedRounds.push(archive);
+
+  // Create new game with same questions, reset everything
   const newCode=genCode();
   const freshState={
     phase:'lobby',
     host:g.host,
-    players:[g.host],
-    scores:{[g.host]:0},
-    questions:g.questions, // keep same questions
+    players:[],
+    scores:{},
+    questions:g.questions,
     currentQ:0,
     answers:{},
-    roundPoints:{}
+    roundPoints:{},
+    previousGameCode:oldCode // link back to old game
   };
 
+  // Update archive entry with new code
+  archive.newGameCode=newCode;
+
+  // Save both: archive the old, create the new
+  await db.from('visa_games').update({state:oldWithArchive,updated_at:new Date().toISOString()}).eq('id',oldCode);
   const {error}=await db.from('visa_games').insert({id:newCode,state:freshState,updated_at:new Date().toISOString()});
   if(error){alert('Virhe luodessa uutta peliä: '+error.message);return;}
 

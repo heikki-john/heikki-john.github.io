@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💩Paskapeli💩</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F4F6FB;--surface:#fff;--surface2:#EEF1F8;--border:#DDE2EE;
+  --text:#18192A;--muted:#6C7693;
+  --accent:#4F46E5;--accent-l:#ECEFFE;
+  --green:#059669;--green-l:#ECFDF5;
+  --red:#DC2626;--gold:#D97706;--gold-l:#FFFBEB;
+  --shadow:0 1px 3px rgba(30,40,80,.07),0 6px 20px rgba(30,40,80,.07);
+  --r:13px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem 5rem;}
+.screen{width:100%;max-width:600px;display:none;flex-direction:column;gap:.9rem;}
+.screen.on{display:flex;}
+/* Logo */
+.logo{text-align:center;padding:.3rem 0 .2rem;}
+.logo h1{font-size:clamp(1.7rem,5vw,2.6rem);font-weight:800;color:var(--accent);letter-spacing:-1.5px;line-height:1.1;}
+.logo p{color:var(--muted);font-size:.83rem;margin-top:.2rem;}
+/* Card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.3rem 1.4rem;box-shadow:var(--shadow);}
+.ct{font-size:.88rem;font-weight:700;margin-bottom:.85rem;display:flex;align-items:center;gap:.45rem;}
+.ctbadge{background:var(--accent-l);color:var(--accent);width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;}
+/* Form */
+label{display:block;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.28rem;}
+input,textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.92rem;padding:.55rem .8rem;outline:none;transition:border-color .18s,box-shadow .18s;}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.1);}
+input[type=number]{-moz-appearance:textfield;}
+textarea{resize:vertical;min-height:58px;}
+/* Buttons */
+.btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.85rem;padding:.55rem 1.3rem;border-radius:8px;border:none;cursor:pointer;transition:transform .12s,background .14s;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.4;cursor:default;}
+.btn-p{background:var(--accent);color:#fff;}
+.btn-p:hover:not(:disabled){background:#4338CA;}
+.btn-s{background:var(--surface);color:var(--text);border:1.5px solid var(--border);}
+.btn-s:hover:not(:disabled){background:var(--surface2);}
+/* Role grid */
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.rbtn{background:var(--surface);border:1.5px solid var(--border);border-radius:11px;padding:1.3rem .9rem;text-align:center;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s;}
+.rbtn:hover{border-color:var(--accent);background:var(--accent-l);box-shadow:0 0 0 3px rgba(79,70,229,.1);}
+.ricon{font-size:1.7rem;margin-bottom:.38rem;}
+.rl{font-weight:700;font-size:.88rem;}
+.rs{font-size:.73rem;color:var(--muted);margin-top:.15rem;}
+/* Code box */
+.codebox{background:var(--accent-l);border:2px dashed #A5B4FC;border-radius:10px;padding:.95rem;text-align:center;}
+.codeval{font-size:2.6rem;font-weight:800;letter-spacing:.22em;color:var(--accent);line-height:1;}
+.codehint{font-size:.76rem;color:var(--muted);margin-top:.3rem;}
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem;}
+.chip{display:inline-flex;align-items:center;gap:.28rem;border:1px solid var(--border);border-radius:99px;padding:.24rem .72rem;font-size:.78rem;font-weight:600;}
+.chip-n{background:var(--surface2);}
+.chip-ok{background:var(--green-l);border-color:#6EE7B7;color:var(--green);}
+/* Q blocks */
+.qblock{background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:.8rem .9rem;margin-bottom:.5rem;}
+.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:.42rem;font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;}
+.qhead button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;}
+.qhead button:hover{color:var(--red);}
+.qgrid{display:grid;grid-template-columns:1fr 130px;gap:.5rem;margin-top:.42rem;}
+/* Progress */
+.prog{height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;}
+.progbar{height:100%;background:var(--accent);border-radius:99px;transition:width .35s;}
+/* Scoreboard */
+.sb{display:flex;flex-wrap:wrap;gap:.38rem;}
+.sbadge{background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:.28rem .75rem;display:flex;flex-direction:column;align-items:center;min-width:68px;}
+.sbadge .sbn{font-size:.65rem;color:var(--muted);font-weight:600;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sbadge .sbp{font-size:1rem;font-weight:800;color:var(--accent);}
+.sbadge.me{border-color:var(--accent);background:var(--accent-l);}
+/* Q display */
+.qdisp{background:var(--accent);color:#fff;border-radius:10px;padding:1.1rem 1.2rem;text-align:center;margin:.6rem 0;}
+.qdnum{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.7;margin-bottom:.28rem;}
+.qdtxt{font-size:1.15rem;font-weight:800;line-height:1.35;}
+/* Answer rows */
+.arow{display:flex;align-items:center;gap:.6rem;margin-bottom:.42rem;}
+.arow .an{min-width:90px;font-size:.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.arow input{flex:1;}
+.arow .ar{min-width:62px;text-align:right;font-weight:800;font-size:.84rem;}
+.p2{color:var(--gold);}
+.p1{color:var(--green);}
+.p0{color:var(--muted);}
+/* Reveal */
+.revbox{background:var(--gold-l);border:1.5px solid #FDE68A;border-radius:9px;padding:.85rem;text-align:center;margin:.65rem 0;}
+.revlbl{font-size:.68rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;}
+.revval{font-size:1.9rem;font-weight:800;color:var(--gold);}
+/* Status */
+.statbox{background:var(--surface2);border-radius:9px;padding:1rem;text-align:center;}
+.statbig{font-size:1rem;font-weight:700;margin-bottom:.22rem;}
+.statsub{font-size:.8rem;color:var(--muted);}
+/* Waiting grid */
+.wgrid{display:flex;flex-wrap:wrap;gap:.35rem;margin:.6rem 0;}
+.wchip{padding:.25rem .72rem;border-radius:99px;font-size:.78rem;font-weight:600;border:1.5px solid var(--border);}
+.wchip.done{background:var(--green-l);border-color:#6EE7B7;color:var(--green);}
+.wchip.wait{background:var(--surface2);color:var(--muted);}
+/* Podium */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:.45rem;margin:1rem 0 1.4rem;}
+.pb{display:flex;flex-direction:column;align-items:center;width:108px;}
+.pbav{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;margin-bottom:.3rem;color:#fff;}
+.pbname{font-weight:700;font-size:.8rem;margin-bottom:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:105px;}
+.pbpts{font-size:.7rem;color:var(--muted);margin-bottom:.3rem;}
+.pbstand{width:100%;border-radius:7px 7px 0 0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;color:rgba(255,255,255,.6);}
+.orow{display:flex;justify-content:space-between;padding:.33rem 0;font-size:.86rem;border-bottom:1px solid var(--border);}
+.orow:last-child{border-bottom:none;}
+.orank{color:var(--muted);min-width:24px;}
+.opts{font-weight:800;color:var(--accent);}
+/* Saved games */
+.sgrow{display:flex;align-items:center;justify-content:space-between;padding:.55rem .7rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem;cursor:pointer;transition:background .15s;}
+.sgrow:hover{background:#E4E9F5;}
+.sgcode{font-weight:800;color:var(--accent);font-size:.95rem;letter-spacing:.08em;}
+.sginfo{font-size:.73rem;color:var(--muted);margin-top:.1rem;}
+.sgbadge{font-size:.7rem;font-weight:700;padding:.18rem .55rem;border-radius:99px;background:var(--surface);border:1px solid var(--border);}
+/* Misc */
+.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;}
+.row-end{display:flex;gap:.5rem;justify-content:flex-end;}
+.divider{height:1px;background:var(--border);margin:.8rem 0;}
+.err{color:var(--red);font-size:.76rem;margin-top:.35rem;display:none;}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 1.6s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+.copybtn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:.7rem;padding:.2rem .5rem;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:color .15s,border-color .15s;}
+.copybtn:hover{color:var(--accent);border-color:var(--accent);}
+.secttitle{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem;}
+.score-edit-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.42rem;}
+.score-edit-row .sen{min-width:100px;font-size:.85rem;font-weight:600;}
+.score-edit-row input{width:90px;flex:none;}
+.sgrow-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<!-- ROLE SELECTION -->
+<div id="s-role" class="screen on">
+  <div class="logo"><h1>💩Paskapeli💩</h1><p>Arvaile lukuja</p></div>
+  <div class="card">
+    <div class="role-grid">
+      <div class="rbtn" id="btn-host"><div class="ricon">👑</div><div class="rl">Juontaja</div><div class="rs">Luo uusi peli</div></div>
+      <div class="rbtn" id="btn-join"><div class="ricon">🎮</div><div class="rl">Pelaaja</div><div class="rs">Liity koodilla</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- HOST SETUP -->
+<div id="s-setup" class="screen">
+  <div class="logo"><h1>💩Paskapeli💩</h1><p>Uusi peli</p></div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">👤</span>Juontajan nimi</div>
+    <label>Nimimerkki</label>
+    <input type="text" id="host-name" placeholder="esim. Pekka" maxlength="20"/>
+    <p class="err" id="e-hname"></p>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">❓</span>Kysymykset</div>
+    <div id="qlist"></div>
+    <button class="btn btn-s" id="add-q">+ Lisää kysymys</button>
+    <p class="err" id="e-q"></p>
+  </div>
+  <!-- Saved games moved here -->
+  <div class="card" id="saved-card">
+    <div class="ct"><span class="ctbadge">📂</span>Aiemmat pelit</div>
+    <div id="saved-list"><div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div></div>
+  </div>
+  <div class="row-end">
+    <button class="btn btn-s" id="back-setup">← Takaisin</button>
+    <button class="btn btn-p" id="create-btn">Luo peli ▶</button>
+  </div>
+</div>
+
+<!-- HOST LOBBY -->
+<div id="s-lobby" class="screen">
+  <div class="logo"><h1>💩Paskapeli💩</h1><p>Odota pelaajia</p></div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">🔑</span>Pelin koodi</div>
+    <div class="codebox">
+      <div class="codeval" id="show-code">----</div>
+      <div class="codehint">Jaa koodi pelaajille &nbsp;<button class="copybtn" id="copy-code">kopioi</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">👥</span>Liittyneet <span id="pcount" style="color:var(--muted);font-weight:500;font-size:.8rem;margin-left:.2rem;"></span></div>
+    <div class="chips" id="lobby-chips"></div>
+    <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
+      <button class="btn btn-s" id="leave-lobby-btn" style="font-size:.78rem;color:var(--muted);">✕ Poistu</button>
+      <button class="btn btn-p" id="start-btn">Aloita peli ▶</button>
+    </div>
+    <p class="err" id="e-lobby"></p>
+  </div>
+</div>
+
+<!-- EDIT GAME -->
+<div id="s-edit" class="screen">
+  <div class="logo"><h1>💩Paskapeli💩</h1><p>Muokkaa peliä</p></div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">✏️</span>Pelin koodi: <span id="edit-code-lbl" style="color:var(--accent);letter-spacing:.1em;font-weight:800;margin-left:.2rem;"></span></div>
+    <label>Juontajan nimi</label>
+    <input type="text" id="edit-host-name" placeholder="Juontaja" maxlength="20"/>
+    <p class="err" id="e-edit-name"></p>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">❓</span>Kysymykset</div>
+    <div id="edit-qlist"></div>
+    <button class="btn btn-s" id="edit-add-q">+ Lisää kysymys</button>
+    <p class="err" id="e-edit-q"></p>
+  </div>
+  <div class="card" id="edit-scores-card">
+    <div class="ct"><span class="ctbadge">🏆</span>Pisteet <span style="font-size:.72rem;color:var(--muted);font-weight:500;margin-left:.3rem;">(voi nollata)</span></div>
+    <div id="edit-scores-list"></div>
+  </div>
+  <div class="card" id="edit-archive-card" style="display:none;">
+    <div class="ct"><span class="ctbadge">📜</span>Aiemmat kierrokset</div>
+    <div id="edit-archive-list"></div>
+  </div>
+  <div style="display:flex;gap:.5rem;justify-content:space-between;flex-wrap:wrap;">
+    <button class="btn btn-s" id="back-edit">← Takaisin</button>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn btn-s" id="edit-reset-scores" style="color:var(--red);border-color:#FECACA;">🗑 Nollaa pisteet</button>
+      <button class="btn btn-p" id="edit-save-btn">💾 Tallenna muutokset</button>
+    </div>
+  </div>
+  <p class="err" id="e-edit-save" style="text-align:right;"></p>
+  <p id="edit-saved-ok" style="display:none;color:var(--green);font-size:.82rem;font-weight:600;text-align:right;">✓ Tallennettu!</p>
+</div>
+
+<!-- JOIN -->
+<div id="s-join" class="screen">
+  <div class="logo"><h1>💩Paskapeli💩</h1><p>Liity peliin</p></div>
+  <div class="card">
+    <div class="ct"><span class="ctbadge">🔑</span>Liity peliin</div>
+    <label>Pelin koodi</label>
+    <input type="text" id="join-code" placeholder="AB12" maxlength="4" style="text-transform:uppercase;font-size:1.4rem;font-weight:800;letter-spacing:.18em;text-align:center;"/>
+    <div style="margin-top:.7rem;"></div>
+    <label>Nimimerkki</label>
+    <input type="text" id="join-name" placeholder="esim. Maija" maxlength="20"/>
+    <p class="err" id="e-join"></p>
+  </div>
+  <div class="row-end">
+    <button class="btn btn-s" id="back-join">← Takaisin</button>
+    <button class="btn btn-p" id="join-btn">Liity →</button>
+  </div>
+</div>
+
+<!-- PLAYER WAITING ROOM -->
+<div id="s-pwait" class="screen">
+  <div class="logo"><h1>💩Paskapeli💩</h1></div>
+  <div class="card">
+    <div class="statbox">
+      <div class="statbig">Odotetaan juontajaa...</div>
+      <div class="statsub"><span class="dot"></span>Peli käynnistyy kun juontaja aloittaa</div>
+    </div>
+    <div class="chips" id="pwait-chips" style="margin-top:.65rem;justify-content:center;"></div>
+    <div class="divider"></div>
+    <div style="text-align:center;">
+      <button class="btn btn-s" id="leave-pwait" style="font-size:.78rem;color:var(--muted);">✕ Poistu pelitilasta</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="s-game" class="screen">
+  <div class="logo"><h1>💩Paskapeli💩</h1></div>
+  <div class="card">
+    <!-- Header row -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;">
+      <span id="qlabel" style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;"></span>
+      <div style="display:flex;align-items:center;gap:.7rem;">
+        <div class="prog" style="width:80px;"><div class="progbar" id="progbar"></div></div>
+        <button id="leave-game-btn" title="Poistu" style="background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:.75rem;padding:.2rem .55rem;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;" onclick="confirmLeave()">✕ Poistu</button>
+      </div>
+    </div>
+    <!-- Scoreboard -->
+    <div class="sb" id="scoreboard"></div>
+    <!-- Question -->
+    <div class="qdisp"><div class="qdnum" id="qnum"></div><div class="qdtxt" id="qtxt"></div></div>
+
+    <!-- ANSWER PHASE -->
+    <div id="ph-ans">
+      <!-- Everyone answers -->
+      <div id="ans-input-wrap">
+        <label>Vastauksesi</label>
+        <input type="number" id="my-ans" placeholder="Kirjoita numero"/>
+        <div class="actions">
+          <button class="btn btn-p" id="send-ans">Lähetä vastaus ✓</button>
+        </div>
+        <p id="sent-ok" style="display:none;color:var(--green);font-weight:600;font-size:.82rem;margin-top:.5rem;">✓ Lähetetty! Odotetaan muita...</p>
+      </div>
+      <!-- Host also sees status panel below input -->
+      <div id="host-status-wrap" style="display:none;">
+        <div class="divider"></div>
+        <div class="secttitle">Tilanne</div>
+        <div class="wgrid" id="ans-status"></div>
+        <div class="actions">
+          <button class="btn btn-p" id="reveal-btn">Paljasta vastaukset →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVEAL PHASE -->
+    <div id="ph-rev" style="display:none;">
+      <div class="revbox"><div class="revlbl">Oikea vastaus</div><div class="revval" id="rev-ans"></div></div>
+      <div class="secttitle">Tulokset</div>
+      <div id="rev-rows"></div>
+      <!-- Host: next button -->
+      <div id="host-next-wrap" style="display:none;" class="actions">
+        <button class="btn btn-p" id="next-btn">Seuraava →</button>
+      </div>
+      <!-- Player: wait -->
+      <p id="player-next-wait" style="display:none;color:var(--muted);font-size:.8rem;margin-top:.75rem;"><span class="dot"></span>Odotetaan juontajaa...</p>
+    </div>
+  </div>
+</div>
+
+<!-- PODIUM -->
+<div id="s-podium" class="screen">
+  <div class="logo"><h1>Tulokset!</h1><p>Peli on ohi</p></div>
+  <div class="card">
+    <div class="podium" id="podium"></div>
+    <div id="others" style="border-top:1px solid var(--border);padding-top:.7rem;"></div>
+    <div style="margin-top:1rem;text-align:center;">
+      <button class="btn btn-p" id="again-btn">Pelaa uudelleen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── SUPABASE ───────────────────────────────────────────────────────────────
+const DB_URL='https://jacunkwooijoftfcsmzy.supabase.co';
+const DB_KEY='sb_publishable_7Qb-OcGE7dx66MjTv9MEOw_PdT8Tzwj';
+const db=supabase.createClient(DB_URL,DB_KEY);
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let S={
+  role:null,      // 'host'|'player'
+  code:null,      // game code
+  name:null,      // my nickname
+  game:null,      // full game state object
+  sub:null,       // realtime subscription
+  pollTimer:null, // polling fallback
+  questions:[]    // host's question list (setup)
+};
+
+// Persist across refresh
+function saveLocal(){
+  localStorage.setItem('km_session',JSON.stringify({role:S.role,code:S.code,name:S.name}));
+}
+function clearLocal(){
+  localStorage.removeItem('km_session');
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const show=id=>{
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $(id).classList.add('on');
+};
+const setErr=(id,msg)=>{const e=$(id);e.textContent=msg;e.style.display=msg?'block':'none';};
+const genCode=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join('');};
+const fmtDate=ts=>new Date(ts).toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+
+// ─── DB HELPERS ─────────────────────────────────────────────────────────────
+async function loadGame(code){
+  const {data,error}=await db.from('visa_games').select('state').eq('id',code).single();
+  if(error||!data)return null;
+  return data.state;
+}
+async function pushGame(){
+  await db.from('visa_games').update({state:S.game,updated_at:new Date().toISOString()}).eq('id',S.code);
+}
+
+// ─── REALTIME + POLLING ─────────────────────────────────────────────────────
+function startSync(){
+  stopSync();
+  // Realtime
+  S.sub=db.channel('km:'+S.code)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'visa_games',filter:`id=eq.${S.code}`},p=>{
+      const prev=S.game?.phase;
+      S.game=p.new.state;
+      route(prev);
+    })
+    .subscribe(st=>console.log('[RT]',st));
+  // Polling fallback every 3s
+  S.pollTimer=setInterval(async()=>{
+    const g=await loadGame(S.code);
+    if(!g)return;
+    if(JSON.stringify(g)!==JSON.stringify(S.game)){
+      const prev=S.game?.phase;
+      S.game=g;
+      route(prev);
+    }
+  },3000);
+}
+function stopSync(){
+  if(S.sub){db.removeChannel(S.sub);S.sub=null;}
+  if(S.pollTimer){clearInterval(S.pollTimer);S.pollTimer=null;}
+}
+
+// ─── ROUTER: what to show based on game phase ────────────────────────────────
+function route(prevPhase){
+  const ph=S.game.phase;
+  if(ph==='lobby'){
+    if(S.role==='host')showLobby();
+    else showPWait();
+  } else if(ph==='answering'){
+    if(prevPhase!=='answering'||document.getElementById('s-game').className.indexOf('on')===-1)showGame();
+    else refreshGame(prevPhase);
+  } else if(ph==='revealing'){
+    showReveal();
+  } else if(ph==='podium'){
+    showPodium();
+  }
+}
+
+// ─── RESTORE SESSION ON REFRESH ─────────────────────────────────────────────
+async function tryRestore(){
+  const raw=localStorage.getItem('km_session');
+  if(!raw)return false;
+  const sess=JSON.parse(raw);
+  if(!sess.code||!sess.name||!sess.role)return false;
+  const g=await loadGame(sess.code);
+  if(!g)return false;
+  // Check still in game
+  if(!g.players.includes(sess.name))return false;
+  S.role=sess.role; S.code=sess.code; S.name=sess.name; S.game=g;
+  startSync();
+  route(null);
+  return true;
+}
+
+// ─── NAV ────────────────────────────────────────────────────────────────────
+$('btn-host').onclick=()=>{
+  S.role='host';
+  if(!S.questions.length)S.questions=[{text:'',answer:''}];
+  renderQ();
+  loadSaved();
+  show('s-setup');
+};
+$('btn-join').onclick=()=>show('s-join');
+$('back-setup').onclick=()=>show('s-role');
+$('back-join').onclick=()=>show('s-role');
+
+
+// ─── QUESTIONS EDITOR ───────────────────────────────────────────────────────
+function renderQ(){
+  const l=$('qlist');l.innerHTML='';
+  S.questions.forEach((q,i)=>{
+    const b=document.createElement('div');b.className='qblock';
+    b.innerHTML=`<div class="qhead"><span>Kysymys ${i+1}</span><button data-i="${i}" class="rmq">✕</button></div>
+      <label>Kysymys</label>
+      <textarea data-f="text" data-i="${i}" placeholder="esim. Kuinka monta raitaa on USA:n lipussa?">${q.text}</textarea>
+      <div class="qgrid">
+        <div><label>Oikea vastaus (numero)</label><input type="number" data-f="answer" data-i="${i}" value="${q.answer}" placeholder="13"/></div>
+      </div>`;
+    l.appendChild(b);
+  });
+  l.querySelectorAll('[data-f]').forEach(el=>el.oninput=()=>{S.questions[+el.dataset.i][el.dataset.f]=el.value;});
+  l.querySelectorAll('.rmq').forEach(b=>b.onclick=()=>{S.questions.splice(+b.dataset.i,1);renderQ();});
+}
+$('add-q').onclick=()=>{S.questions.push({text:'',answer:''});renderQ();};
+
+// ─── CREATE GAME ────────────────────────────────────────────────────────────
+$('create-btn').onclick=async()=>{
+  const name=$('host-name').value.trim();
+  setErr('e-hname','');setErr('e-q','');
+  if(!name){setErr('e-hname','Anna nimimerkki.');return;}
+  const vq=S.questions.filter(q=>q.text.trim()&&q.answer!==''&&!isNaN(+q.answer));
+  if(!vq.length){setErr('e-q','Lisää vähintään yksi kelvollinen kysymys.');return;}
+
+  S.name=name; S.code=genCode();
+  S.game={
+    phase:'lobby',
+    host:name,
+    players:[],
+    scores:{},
+    questions:vq.map(q=>({text:q.text.trim(),answer:+q.answer})),
+    currentQ:0,
+    answers:{},
+    roundPoints:{}
+  };
+
+  const {error}=await db.from('visa_games').insert({id:S.code,state:S.game,updated_at:new Date().toISOString()});
+  if(error){setErr('e-q','Virhe luodessa peliä: '+error.message);return;}
+
+  saveLocal();
+  showLobby();
+  startSync();
+};
+
+// ─── LOBBY ──────────────────────────────────────────────────────────────────
+function showLobby(){
+  show('s-lobby');
+  $('show-code').textContent=S.code;
+  const hostChip=`<span class="chip" style="background:var(--accent-l);border-color:#A5B4FC;color:var(--accent);">👑 ${S.game.host} (juontaja)</span>`;
+  const playerChips=S.game.players.map(p=>`<span class="chip chip-ok">${p}</span>`).join('');
+  $('lobby-chips').innerHTML=hostChip+playerChips;
+  $('pcount').textContent=`(${S.game.players.length} pelaajaa)`;
+  setErr('e-lobby','');
+}
+
+$('copy-code').onclick=()=>{
+  navigator.clipboard.writeText(S.code).then(()=>{$('copy-code').textContent='kopioitu!';setTimeout(()=>$('copy-code').textContent='kopioi',2000);});
+};
+
+$('start-btn').onclick=async()=>{
+  // Fetch fresh state before mutating
+  const fresh=await loadGame(S.code);
+  if(fresh)S.game=fresh;
+  S.game.phase='answering';
+  S.game.currentQ=0;
+  S.game.answers={};
+  S.game.roundPoints={};
+  await pushGame();
+  showGame();
+};
+
+// ─── JOIN ────────────────────────────────────────────────────────────────────
+$('join-btn').onclick=async()=>{
+  const code=$('join-code').value.trim().toUpperCase();
+  const name=$('join-name').value.trim();
+  setErr('e-join','');
+  if(code.length!==4){setErr('e-join','Anna 4-merkkinen koodi.');return;}
+  if(!name){setErr('e-join','Anna nimimerkki.');return;}
+
+  const g=await loadGame(code);
+  if(!g){setErr('e-join','Peliä ei löydy. Tarkista koodi.');return;}
+  if(g.phase!=='lobby'){setErr('e-join','Peli on jo käynnissä.');return;}
+  if(g.players.includes(name)){setErr('e-join','Nimimerkki on jo käytössä.');return;}
+  if(g.players.length>=10){setErr('e-join','Peli on täynnä (max 10).');return;}
+
+  g.players.push(name);
+  g.scores[name]=0;
+  const {error}=await db.from('visa_games').update({state:g,updated_at:new Date().toISOString()}).eq('id',code);
+  if(error){setErr('e-join','Virhe liittyessä: '+error.message);return;}
+
+  S.role='player'; S.code=code; S.name=name; S.game=g;
+  saveLocal();
+  showPWait();
+  startSync();
+};
+
+// ─── PLAYER WAIT ────────────────────────────────────────────────────────────
+function showPWait(){
+  show('s-pwait');
+  $('pwait-chips').innerHTML=(S.game.players||[]).map(p=>`<span class="chip chip-n">${p}</span>`).join('');
+}
+
+// ─── GAME ────────────────────────────────────────────────────────────────────
+function showGame(){
+  show('s-game');
+  const q=S.game.questions[S.game.currentQ];
+  const tot=S.game.questions.length;
+
+  $('qlabel').textContent=`Kysymys ${S.game.currentQ+1} / ${tot}`;
+  $('progbar').style.width=((S.game.currentQ/tot)*100)+'%';
+  $('qnum').textContent=`Kysymys ${S.game.currentQ+1}`;
+  $('qtxt').textContent=q.text;
+
+  renderSB();
+
+  // Show answer phase
+  $('ph-ans').style.display='block';
+  $('ph-rev').style.display='none';
+
+  if(S.role==='host'){
+    // Host: only sees status panel, no answer input
+    $('ans-input-wrap').style.display='none';
+    $('host-status-wrap').style.display='block';
+    renderAnsStatus();
+  } else {
+    // Player: answer input, no status panel
+    $('ans-input-wrap').style.display='block';
+    $('my-ans').value='';
+    $('sent-ok').style.display='none';
+    $('send-ans').style.display='inline-flex';
+    $('host-status-wrap').style.display='none';
+
+    // Already answered?
+    if(S.game.answers&&S.game.answers[S.name]!==undefined){
+      $('sent-ok').style.display='block';
+      $('send-ans').style.display='none';
+    }
+  }
+}
+
+function refreshGame(prev){
+  // Called mid-round (e.g. someone else answered)
+  renderSB();
+  if(S.role==='host')renderAnsStatus();
+}
+
+function renderAnsStatus(){
+  const ans=S.game.answers||{};
+  $('ans-status').innerHTML=S.game.players.map(p=>
+    `<span class="wchip ${ans[p]!==undefined?'done':'wait'}">${ans[p]!==undefined?'✓ ':''}${p}</span>`
+  ).join('');
+}
+
+// Submit answer
+$('send-ans').onclick=async()=>{
+  const val=$('my-ans').value.trim();
+  if(val===''||isNaN(+val))return;
+  // Fetch latest to avoid race condition
+  const fresh=await loadGame(S.code);
+  if(!fresh)return;
+  if(!fresh.answers)fresh.answers={};
+  fresh.answers[S.name]=+val;
+  S.game=fresh;
+  await pushGame();
+  $('sent-ok').style.display='block';
+  $('send-ans').style.display='none';
+  if(S.role==='host')renderAnsStatus();
+};
+
+// Host: reveal answers
+$('reveal-btn').onclick=async()=>{
+  const fresh=await loadGame(S.code);
+  if(!fresh)return;
+  calcPoints(fresh);
+  fresh.phase='revealing';
+  S.game=fresh;
+  await pushGame();
+  showReveal();
+};
+
+function calcPoints(g){
+  const correct=g.questions[g.currentQ].answer;
+  const ans=g.answers||{};
+  const rp={};
+  g.players.forEach(p=>rp[p]=0);
+
+  // +2 for exact answers
+  const exact=g.players.filter(p=>ans[p]!==undefined&&ans[p]===correct);
+  exact.forEach(p=>{g.scores[p]=(g.scores[p]||0)+2;rp[p]=2;});
+
+  // +1 for closest ONLY if nobody got exact — all tied for closest also get it
+  if(exact.length===0){
+    const answered=g.players.filter(p=>ans[p]!==undefined);
+    if(answered.length){
+      const diffs=answered.map(p=>Math.abs(ans[p]-correct));
+      const minD=Math.min(...diffs);
+      answered.forEach((p,i)=>{
+        if(diffs[i]===minD){g.scores[p]=(g.scores[p]||0)+1;rp[p]=1;}
+      });
+    }
+  }
+  g.roundPoints=rp;
+}
+
+// ─── REVEAL ─────────────────────────────────────────────────────────────────
+function showReveal(){
+  show('s-game');
+  $('ph-ans').style.display='none';
+  $('ph-rev').style.display='block';
+
+  $('rev-ans').textContent=S.game.questions[S.game.currentQ].answer;
+  renderSB();
+
+  const ans=S.game.answers||{};
+  const rp=S.game.roundPoints||{};
+  $('rev-rows').innerHTML='';
+  S.game.players.forEach(p=>{
+    const v=ans[p];
+    const pts=rp[p]||0;
+    const cls=pts===2?'p2':pts===1?'p1':'p0';
+    const lbl=pts===2?'+2 ✓':pts===1?'+1 ≈':'+0';
+    const row=document.createElement('div');row.className='arow';
+    row.innerHTML=`<span class="an">${p}</span><input type="number" value="${v!==undefined?v:'—'}" disabled style="flex:1;"/><span class="ar ${cls}">${lbl}</span>`;
+    $('rev-rows').appendChild(row);
+  });
+
+  if(S.role==='host'){
+    $('host-next-wrap').style.display='flex';
+    $('player-next-wait').style.display='none';
+    const last=S.game.currentQ>=S.game.questions.length-1;
+    $('next-btn').textContent=last?'Näytä tulokset 🏆':'Seuraava →';
+  } else {
+    $('host-next-wrap').style.display='none';
+    $('player-next-wait').style.display='block';
+  }
+}
+
+$('next-btn').onclick=async()=>{
+  const fresh=await loadGame(S.code);
+  if(!fresh)return;
+  if(fresh.currentQ>=fresh.questions.length-1){
+    fresh.phase='podium';
+  } else {
+    fresh.currentQ+=1;
+    fresh.answers={};
+    fresh.roundPoints={};
+    fresh.phase='answering';
+  }
+  S.game=fresh;
+  await pushGame();
+  if(S.game.phase==='podium')showPodium();
+  else showGame();
+};
+
+function renderSB(){
+  $('scoreboard').innerHTML=S.game.players.map(p=>
+    `<div class="sbadge${p===S.name?' me':''}"><span class="sbn">${p}</span><span class="sbp">${S.game.scores[p]||0}</span></div>`
+  ).join('');
+}
+
+// ─── PODIUM ─────────────────────────────────────────────────────────────────
+function showPodium(){
+  show('s-podium');
+  stopSync();
+  clearLocal();
+
+  const sorted=[...S.game.players].sort((a,b)=>(S.game.scores[b]||0)-(S.game.scores[a]||0));
+  const mc=['#94A3B8','#F59E0B','#B45309'];
+  const mh=['95px','135px','72px'];
+  const mn=['2','1','3'];
+  const top3=sorted.slice(0,3);
+  const ord=top3.length===1?[null,top3[0],null]:top3.length===2?[top3[1],top3[0],null]:[top3[1],top3[0],top3[2]];
+
+  $('podium').innerHTML='';
+  ord.forEach((p,i)=>{
+    if(!p)return;
+    const b=document.createElement('div');b.className='pb';b.style.order=i;
+    b.innerHTML=`<div class="pbav" style="background:${mc[i]};">${p.slice(0,2).toUpperCase()}</div>
+      <div class="pbname">${p}</div><div class="pbpts">${S.game.scores[p]||0} pist.</div>
+      <div class="pbstand" style="height:${mh[i]};background:${mc[i]};">${mn[i]}</div>`;
+    $('podium').appendChild(b);
+  });
+
+  $('others').innerHTML='';
+  sorted.slice(3).forEach((p,i)=>{
+    const r=document.createElement('div');r.className='orow';
+    r.innerHTML=`<span class="orank">${i+4}.</span><span>${p}</span><span class="opts">${S.game.scores[p]||0} pist.</span>`;
+    $('others').appendChild(r);
+  });
+}
+
+$('again-btn').onclick=()=>{
+  stopSync();clearLocal();
+  S={role:null,code:null,name:null,game:null,sub:null,pollTimer:null,questions:[]};
+  show('s-role');
+};
+
+// ─── LEAVE / EXIT ────────────────────────────────────────────────────────────
+function confirmLeave(){
+  const msg=S.role==='host'
+    ? 'Poistu pelitilasta? Peli tallentuu ja voit jatkaa myöhemmin Aiemmat pelit -valikosta.'
+    : 'Poistu pelistä? Voit liittyä takaisin samalla koodilla ja nimimerkillä jos peli on vielä käynnissä.';
+  if(!confirm(msg))return;
+  doLeave();
+}
+
+function doLeave(){
+  stopSync();
+  clearLocal();
+  S={role:null,code:null,name:null,game:null,sub:null,pollTimer:null,questions:[]};
+  show('s-role');
+}
+
+document.addEventListener('click',e=>{
+  if(e.target.id==='leave-lobby-btn'){
+    if(confirm('Poistu lobbystä? Peli tallentuu Aiemmat pelit -listaan.'))doLeave();
+  }
+  if(e.target.id==='leave-pwait'){
+    if(confirm('Poistu odotusnäytöltä? Voit liittyä takaisin samalla koodilla.'))doLeave();
+  }
+});
+
+// ─── SAVED GAMES ────────────────────────────────────────────────────────────
+async function loadSaved(){
+  const card=$('saved-card');
+  const sl=$('saved-list');
+  if(!card||!sl) return;
+  card.style.display='block';
+  sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div>';
+
+  try {
+    const {data,error}=await db.from('visa_games').select('id,state,updated_at').order('updated_at',{ascending:false}).limit(20);
+    if(error) throw error;
+    const others=S.code ? (data||[]).filter(r=>r.id!==S.code) : (data||[]);
+    if(!others.length){
+      sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ei aiempia pelejä.</div>';
+      return;
+    }
+    sl.innerHTML='';
+    others.forEach(row=>{
+      const g=row.state;
+      const phaseLabel={lobby:'Lobbyssa',answering:'Käynnissä',revealing:'Vastaukset',podium:'Päättynyt'}[g.phase]||g.phase;
+      const archiveInfo=g.archivedRounds?`· ${g.archivedRounds.length} uusintaa`:'';
+      const d=document.createElement('div');d.className='sgrow';
+      d.style.cursor='default';
+      d.innerHTML=`<div style="flex:1;min-width:0;overflow:hidden;">
+        <div class="sgcode">${row.id}</div>
+        <div class="sginfo">Juontaja: ${g.host} · ${g.players.length} pelj · Q${g.currentQ+1}/${g.questions.length} · ${fmtDate(row.updated_at)} ${archiveInfo}</div>
+      </div>
+      <div class="sgrow-actions">
+        <span class="sgbadge">${phaseLabel}</span>
+        <button class="btn btn-s edit-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">✏️ Muokkaa</button>
+        <button class="btn btn-s replay-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">🔄 Uusinta</button>
+        <button class="btn btn-p open-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">▶ Avaa</button>
+      </div>`;
+      sl.appendChild(d);
+    });
+
+    sl.querySelectorAll('.open-game-btn').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      const g2=await loadGame(btn.dataset.code);
+      if(g2)rejoinAsHost(btn.dataset.code,g2);
+    });
+    sl.querySelectorAll('.replay-game-btn').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      const g2=await loadGame(btn.dataset.code);
+      if(g2)replayGame(btn.dataset.code,g2);
+    });
+    sl.querySelectorAll('.edit-game-btn').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      const g2=await loadGame(btn.dataset.code);
+      if(g2)openEdit(btn.dataset.code,g2);
+    });
+  } catch(e) {
+    sl.innerHTML=`<div style="color:var(--red);font-size:.82rem;padding:.3rem 0;">Virhe ladattaessa: ${e.message||e}</div>`;
+  }
+}
+
+// ─── EDIT GAME ───────────────────────────────────────────────────────────────
+let editCode=null;
+let editGame=null;
+let editQuestions=[];
+
+function openEdit(code,g){
+  editCode=code;
+  editGame=JSON.parse(JSON.stringify(g));
+  editQuestions=editGame.questions.map(q=>({text:q.text,answer:q.answer}));
+
+  $('edit-code-lbl').textContent=code;
+  $('edit-host-name').value=editGame.host||'';
+  setErr('e-edit-name','');
+  setErr('e-edit-q','');
+  $('edit-saved-ok').style.display='none';
+  renderEditQ();
+  renderEditScores();
+  renderEditArchive();
+  show('s-edit');
+}
+
+function renderEditArchive(){
+  const card=$('edit-archive-card');
+  const rounds=editGame.archivedRounds;
+  if(!rounds||!rounds.length){card.style.display='none';return;}
+  card.style.display='block';
+  const al=$('edit-archive-list');al.innerHTML='';
+  rounds.forEach((r,i)=>{
+    const date=new Date(r.playedAt).toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+    const sorted=Object.entries(r.finalScores||{}).sort((a,b)=>b[1]-a[1]);
+    const scoreStr=sorted.map(([p,s])=>`${p}: ${s} pist.`).join(' · ');
+    const div=document.createElement('div');
+    div.style='background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.4rem;font-size:.78rem;';
+    div.innerHTML=`<div style="font-weight:700;color:var(--accent);margin-bottom:.2rem;">Kierros ${i+1} — ${date}${r.newGameCode?' → '+r.newGameCode:''}</div>
+      <div style="color:var(--muted);">${scoreStr||'Ei pisteitä'}</div>`;
+    al.appendChild(div);
+  });
+}
+
+function renderEditQ(){
+  const l=$('edit-qlist');l.innerHTML='';
+  editQuestions.forEach((q,i)=>{
+    const b=document.createElement('div');b.className='qblock';
+    b.innerHTML=`<div class="qhead"><span>Kysymys ${i+1}</span><button data-i="${i}" class="rmq-e">✕</button></div>
+      <label>Kysymys</label>
+      <textarea data-f="text" data-i="${i}" placeholder="Kysymys...">${q.text}</textarea>
+      <div class="qgrid">
+        <div><label>Oikea vastaus (numero)</label><input type="number" data-f="answer" data-i="${i}" value="${q.answer}" placeholder="0"/></div>
+      </div>`;
+    l.appendChild(b);
+  });
+  l.querySelectorAll('[data-f]').forEach(el=>el.oninput=()=>{editQuestions[+el.dataset.i][el.dataset.f]=el.value;});
+  l.querySelectorAll('.rmq-e').forEach(b=>b.onclick=()=>{editQuestions.splice(+b.dataset.i,1);renderEditQ();});
+}
+
+function renderEditScores(){
+  const sl=$('edit-scores-list');sl.innerHTML='';
+  (editGame.players||[]).forEach(p=>{
+    const row=document.createElement('div');row.className='score-edit-row';
+    row.innerHTML=`<span class="sen">${p}</span>
+      <input type="number" value="${editGame.scores[p]||0}" data-player="${p}" style="width:90px;"/>
+      <span style="font-size:.75rem;color:var(--muted);">pist.</span>`;
+    sl.appendChild(row);
+  });
+  sl.querySelectorAll('[data-player]').forEach(inp=>inp.oninput=()=>{
+    editGame.scores[inp.dataset.player]=+inp.value||0;
+  });
+}
+
+$('edit-add-q').onclick=()=>{editQuestions.push({text:'',answer:''});renderEditQ();};
+
+$('edit-reset-scores').onclick=()=>{
+  if(!confirm('Nollataan kaikkien pisteet?'))return;
+  (editGame.players||[]).forEach(p=>editGame.scores[p]=0);
+  renderEditScores();
+};
+
+$('back-edit').onclick=()=>{
+  show('s-setup'); loadSaved();
+};
+
+$('edit-save-btn').onclick=async()=>{
+  const newHost=$('edit-host-name').value.trim();
+  setErr('e-edit-name','');setErr('e-edit-q','');
+  $('edit-saved-ok').style.display='none';
+
+  if(!newHost){setErr('e-edit-name','Anna juontajan nimi.');return;}
+  const vq=editQuestions.filter(q=>String(q.text).trim()&&q.answer!==''&&!isNaN(+q.answer));
+  if(!vq.length){setErr('e-edit-q','Vähintään yksi kelvollinen kysymys tarvitaan.');return;}
+
+  // Apply edits
+  editGame.host=newHost;
+  editGame.questions=vq.map(q=>({text:String(q.text).trim(),answer:+q.answer}));
+
+  // Fix currentQ if out of bounds
+  if(editGame.currentQ>=editGame.questions.length){
+    editGame.currentQ=Math.max(0,editGame.questions.length-1);
+  }
+
+  // If host name changed, update players array too
+  const oldHost=S.game?.host||editGame.players?.[0];
+  if(oldHost&&oldHost!==newHost&&editGame.players.includes(oldHost)){
+    const idx=editGame.players.indexOf(oldHost);
+    editGame.players[idx]=newHost;
+    editGame.scores[newHost]=editGame.scores[oldHost]||0;
+    if(oldHost!==newHost)delete editGame.scores[oldHost];
+  }
+
+  const {error}=await db.from('visa_games').update({state:editGame,updated_at:new Date().toISOString()}).eq('id',editCode);
+  if(error){setErr('e-edit-save','Virhe tallennuksessa: '+error.message);return;}
+
+  $('edit-saved-ok').style.display='block';
+  setTimeout(()=>{$('edit-saved-ok').style.display='none';show('s-setup');loadSaved();},1500);
+};
+
+async function rejoinAsHost(code,g){
+  S.role='host'; S.code=code; S.name=g.host; S.game=g;
+  saveLocal();
+  startSync();
+  route(null);
+}
+
+async function replayGame(oldCode,g){
+  if(!confirm(`Pelaa uudelleen kysymykset pelistä ${oldCode}?\nVanhan pelin tilastot arkistoidaan ja uusi peli saa uuden koodin.`))return;
+
+  // Archive old game's final scores as a round entry in the old game record
+  const archive={
+    playedAt:new Date().toISOString(),
+    players:g.players,
+    finalScores:g.scores,
+    questions:g.questions,
+    newGameCode:null // will fill after
+  };
+  const oldWithArchive=JSON.parse(JSON.stringify(g));
+  if(!oldWithArchive.archivedRounds)oldWithArchive.archivedRounds=[];
+  oldWithArchive.archivedRounds.push(archive);
+
+  // Create new game with same questions, reset everything
+  const newCode=genCode();
+  const freshState={
+    phase:'lobby',
+    host:g.host,
+    players:[],
+    scores:{},
+    questions:g.questions,
+    currentQ:0,
+    answers:{},
+    roundPoints:{},
+    previousGameCode:oldCode // link back to old game
+  };
+
+  // Update archive entry with new code
+  archive.newGameCode=newCode;
+
+  // Save both: archive the old, create the new
+  await db.from('visa_games').update({state:oldWithArchive,updated_at:new Date().toISOString()}).eq('id',oldCode);
+  const {error}=await db.from('visa_games').insert({id:newCode,state:freshState,updated_at:new Date().toISOString()});
+  if(error){alert('Virhe luodessa uutta peliä: '+error.message);return;}
+
+  S.role='host'; S.code=newCode; S.name=g.host; S.game=freshState;
+  saveLocal();
+  showLobby();
+  startSync();
+}
+
+// ─── BOOT ────────────────────────────────────────────────────────────────────
+(async()=>{
+  const restored=await tryRestore();
+  if(!restored){ show('s-role'); }
+})();
+</script>
+</body>
+</html>

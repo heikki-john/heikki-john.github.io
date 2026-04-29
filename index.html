@@ -142,6 +142,11 @@ textarea{resize:vertical;min-height:58px;}
       <div class="rbtn" id="btn-join"><div class="ricon">🎮</div><div class="rl">Pelaaja</div><div class="rs">Liity koodilla</div></div>
     </div>
   </div>
+  <!-- Saved games inline on role screen -->
+  <div class="card" id="saved-card">
+    <div class="ct"><span class="ctbadge">📂</span>Aiemmat pelit</div>
+    <div id="saved-list"><div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div></div>
+  </div>
 </div>
 
 <!-- HOST SETUP -->
@@ -184,11 +189,6 @@ textarea{resize:vertical;min-height:58px;}
       <button class="btn btn-p" id="start-btn">Aloita peli ▶</button>
     </div>
     <p class="err" id="e-lobby"></p>
-  </div>
-  <!-- SAVED GAMES inline -->
-  <div class="card" id="saved-card" style="display:none;">
-    <div class="ct"><span class="ctbadge">📂</span>Aiemmat pelit</div>
-    <div id="saved-list"><div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div></div>
   </div>
 </div>
 
@@ -353,7 +353,10 @@ function clearLocal(){
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 const $=id=>document.getElementById(id);
-const show=id=>{document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');};
+const show=id=>{
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $(id).classList.add('on');
+};
 const setErr=(id,msg)=>{const e=$(id);e.textContent=msg;e.style.display=msg?'block':'none';};
 const genCode=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join('');};
 const fmtDate=ts=>new Date(ts).toLocaleDateString('fi-FI',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -436,7 +439,7 @@ $('btn-host').onclick=()=>{
 $('btn-join').onclick=()=>show('s-join');
 $('back-setup').onclick=()=>show('s-role');
 $('back-join').onclick=()=>show('s-role');
-$('back-saved').onclick=()=>show('s-role');
+
 
 // ─── QUESTIONS EDITOR ───────────────────────────────────────────────────────
 function renderQ(){
@@ -493,7 +496,6 @@ function showLobby(){
   $('lobby-chips').innerHTML=hostChip+playerChips;
   $('pcount').textContent=`(${S.game.players.length} pelaajaa)`;
   setErr('e-lobby','');
-  loadSaved();
 }
 
 $('copy-code').onclick=()=>{
@@ -731,7 +733,7 @@ function showPodium(){
 $('again-btn').onclick=()=>{
   stopSync();clearLocal();
   S={role:null,code:null,name:null,game:null,sub:null,pollTimer:null,questions:[]};
-  show('s-role');
+  show('s-role'); loadSaved();
 };
 
 // ─── LEAVE / EXIT ────────────────────────────────────────────────────────────
@@ -747,7 +749,7 @@ function doLeave(){
   stopSync();
   clearLocal();
   S={role:null,code:null,name:null,game:null,sub:null,pollTimer:null,questions:[]};
-  show('s-role');
+  show('s-role'); loadSaved();
 }
 
 document.addEventListener('click',e=>{
@@ -763,52 +765,56 @@ document.addEventListener('click',e=>{
 async function loadSaved(){
   const card=$('saved-card');
   const sl=$('saved-list');
-  sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div>';
-  card.style.display='none';
-  const {data,error}=await db.from('visa_games').select('id,state,updated_at').order('updated_at',{ascending:false}).limit(20);
-  // Filter out current game
-  const others=(data||[]).filter(r=>r.id!==S.code);
-  if(error||!others.length){
-    card.style.display='none';
-    return;
-  }
+  if(!card||!sl) return;
   card.style.display='block';
-  sl.innerHTML='';
-  others.forEach(row=>{
-    const g=row.state;
-    const phaseLabel={lobby:'Lobbyssa',answering:'Käynnissä',revealing:'Vastaukset',podium:'Päättynyt'}[g.phase]||g.phase;
-    // Build archived rounds summary if exists
-    const archiveInfo=g.archivedRounds?`· ${g.archivedRounds.length} kierrosta arkistoitu`:'';
-    const d=document.createElement('div');d.className='sgrow';
-    d.style.cursor='default';
-    d.innerHTML=`<div style="flex:1;min-width:0;overflow:hidden;">
-      <div class="sgcode">${row.id}</div>
-      <div class="sginfo">Juontaja: ${g.host} · ${g.players.length} pelj · Q${g.currentQ+1}/${g.questions.length} · ${fmtDate(row.updated_at)} ${archiveInfo}</div>
-    </div>
-    <div class="sgrow-actions">
-      <span class="sgbadge">${phaseLabel}</span>
-      <button class="btn btn-s edit-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">✏️</button>
-      <button class="btn btn-s replay-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">🔄 Uusinta</button>
-      <button class="btn btn-p open-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">▶ Avaa</button>
-    </div>`;
-    sl.appendChild(d);
-  });
+  sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ladataan...</div>';
 
-  sl.querySelectorAll('.open-game-btn').forEach(btn=>btn.onclick=async e=>{
-    e.stopPropagation();
-    const g2=await loadGame(btn.dataset.code);
-    if(g2)rejoinAsHost(btn.dataset.code,g2);
-  });
-  sl.querySelectorAll('.replay-game-btn').forEach(btn=>btn.onclick=async e=>{
-    e.stopPropagation();
-    const g2=await loadGame(btn.dataset.code);
-    if(g2)replayGame(btn.dataset.code,g2);
-  });
-  sl.querySelectorAll('.edit-game-btn').forEach(btn=>btn.onclick=async e=>{
-    e.stopPropagation();
-    const g2=await loadGame(btn.dataset.code);
-    if(g2)openEdit(btn.dataset.code,g2);
-  });
+  try {
+    const {data,error}=await db.from('visa_games').select('id,state,updated_at').order('updated_at',{ascending:false}).limit(20);
+    if(error) throw error;
+    const others=S.code ? (data||[]).filter(r=>r.id!==S.code) : (data||[]);
+    if(!others.length){
+      sl.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:.3rem 0;">Ei aiempia pelejä.</div>';
+      return;
+    }
+    sl.innerHTML='';
+    others.forEach(row=>{
+      const g=row.state;
+      const phaseLabel={lobby:'Lobbyssa',answering:'Käynnissä',revealing:'Vastaukset',podium:'Päättynyt'}[g.phase]||g.phase;
+      const archiveInfo=g.archivedRounds?`· ${g.archivedRounds.length} uusintaa`:'';
+      const d=document.createElement('div');d.className='sgrow';
+      d.style.cursor='default';
+      d.innerHTML=`<div style="flex:1;min-width:0;overflow:hidden;">
+        <div class="sgcode">${row.id}</div>
+        <div class="sginfo">Juontaja: ${g.host} · ${g.players.length} pelj · Q${g.currentQ+1}/${g.questions.length} · ${fmtDate(row.updated_at)} ${archiveInfo}</div>
+      </div>
+      <div class="sgrow-actions">
+        <span class="sgbadge">${phaseLabel}</span>
+        <button class="btn btn-s edit-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">✏️ Muokkaa</button>
+        <button class="btn btn-s replay-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">🔄 Uusinta</button>
+        <button class="btn btn-p open-game-btn" data-code="${row.id}" style="font-size:.72rem;padding:.28rem .6rem;">▶ Avaa</button>
+      </div>`;
+      sl.appendChild(d);
+    });
+
+    sl.querySelectorAll('.open-game-btn').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      const g2=await loadGame(btn.dataset.code);
+      if(g2)rejoinAsHost(btn.dataset.code,g2);
+    });
+    sl.querySelectorAll('.replay-game-btn').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      const g2=await loadGame(btn.dataset.code);
+      if(g2)replayGame(btn.dataset.code,g2);
+    });
+    sl.querySelectorAll('.edit-game-btn').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      const g2=await loadGame(btn.dataset.code);
+      if(g2)openEdit(btn.dataset.code,g2);
+    });
+  } catch(e) {
+    sl.innerHTML=`<div style="color:var(--red);font-size:.82rem;padding:.3rem 0;">Virhe ladattaessa: ${e.message||e}</div>`;
+  }
 }
 
 // ─── EDIT GAME ───────────────────────────────────────────────────────────────
@@ -889,9 +895,7 @@ $('edit-reset-scores').onclick=()=>{
 };
 
 $('back-edit').onclick=()=>{
-  // If we have an active game, go back to lobby; else role screen
-  if(S.code&&S.game){show('s-lobby');loadSaved();}
-  else show('s-role');
+  show('s-role'); loadSaved();
 };
 
 $('edit-save-btn').onclick=async()=>{
@@ -981,7 +985,7 @@ async function replayGame(oldCode,g){
 // ─── BOOT ────────────────────────────────────────────────────────────────────
 (async()=>{
   const restored=await tryRestore();
-  if(!restored)show('s-role');
+  if(!restored){ show('s-role'); loadSaved(); }
 })();
 </script>
 </body>

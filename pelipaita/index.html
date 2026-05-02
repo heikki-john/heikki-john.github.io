@@ -236,7 +236,7 @@ textarea{resize:vertical;min-height:56px;}
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label>Pelinumero</label><input type="text" id="fNum" placeholder="esim. 10" maxlength="4"></div>
-        <div class="form-group"><label>Koko</label><select id="fSize"><option value="">– valitse –</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL</option><option>140</option><option>152</option><option>164</option><option>176</option></select></div>
+        <div class="form-group"><label>Koko</label><select id="fSize"><option value="">– valitse –</option><option>140</option><option>150</option><option>160</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></div>
         <div class="form-group full"><label>Pelaajan nimi</label><input type="text" id="fName" placeholder="Etunimi Sukunimi"></div>
       </div>
       <div class="section-label">Paidat</div>
@@ -245,11 +245,13 @@ textarea{resize:vertical;min-height:56px;}
           <div class="jersey-card-title"><span class="cdark"></span> Tumma paita</div>
           <div class="form-group"><label>Omistus</label><select id="fDarkOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
           <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus"><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
+          <div id="fDarkOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fDarkOmaDate"></div></div>
         </div>
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="clight"></span> Vaalea paita</div>
           <div class="form-group"><label>Omistus</label><select id="fLightOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
           <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus"><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
+          <div id="fLightOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fLightOmaDate"></div></div>
         </div>
       </div>
       <div class="section-label">Lisätiedot</div>
@@ -384,13 +386,13 @@ async function getIP(){try{const r=await fetch('https://api.ipify.org?format=jso
 // ── SUPABASE CRUD ─────────────────────────────
 function rowToPlayer(r){
   return{id:r.id,num:r.num||'',size:r.size||'',name:r.name||'',notes:r.notes||'',
-    dark:{own:r.dark_own,status:r.dark_status,date:r.dark_date},
-    light:{own:r.light_own,status:r.light_status,date:r.light_date}};
+    dark:{own:r.dark_own,status:r.dark_status,date:r.dark_date,oma_date:r.dark_oma_date},
+    light:{own:r.light_own,status:r.light_status,date:r.light_date,oma_date:r.light_oma_date}};
 }
 function playerToRow(p){
   return{id:p.id,num:p.num,size:p.size,name:p.name,notes:p.notes,
-    dark_own:p.dark.own,dark_status:p.dark.status,dark_date:p.dark.date||null,
-    light_own:p.light.own,light_status:p.light.status,light_date:p.light.date||null,
+    dark_own:p.dark.own,dark_status:p.dark.status,dark_date:p.dark.date||null,dark_oma_date:p.dark.oma_date||null,
+    light_own:p.light.own,light_status:p.light.status,light_date:p.light.date||null,light_oma_date:p.light.oma_date||null,
     updated_at:new Date().toISOString()};
 }
 async function loadData(){
@@ -446,8 +448,8 @@ function renderTable(){
   const tbody=document.getElementById('tableBody');
   if(!rows.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">🏅</div><div>Ei tuloksia</div></div></td></tr>';updateStats();return;}
   tbody.innerHTML=rows.map(p=>{
-    const dd=p.dark.own==='seura'&&p.dark.date?fmtDate(p.dark.date):'';
-    const ld=p.light.own==='seura'&&p.light.date?fmtDate(p.light.date):'';
+    const dd=p.dark.date?fmtDate(p.dark.date):(p.dark.oma_date?fmtDate(p.dark.oma_date):'');
+    const ld=p.light.date?fmtDate(p.light.date):(p.light.oma_date?fmtDate(p.light.oma_date):'');
     return`<tr>
       <td><input type="checkbox" ${selectedIds.has(p.id)?'checked':''} onchange="toggleSelect('${p.id}',this.checked)"></td>
       <td><span class="jersey-num">${p.num||'–'}</span></td>
@@ -517,8 +519,10 @@ function openAddModal(){
   document.getElementById('fSize').value='';
   document.getElementById('fDarkOwn').value='seura';document.getElementById('fDarkStatus').value='lainassa';
   document.getElementById('fDarkDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('fDarkOmaDate').value=new Date().toISOString().slice(0,10);
   document.getElementById('fLightOwn').value='seura';document.getElementById('fLightStatus').value='lainassa';
   document.getElementById('fLightDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('fLightOmaDate').value=new Date().toISOString().slice(0,10);
   updateOwnFields();openModal('editModal');
 }
 function openEditModal(id){
@@ -529,14 +533,20 @@ function openEditModal(id){
   document.getElementById('fDarkOwn').value=p.dark.own;
   document.getElementById('fDarkStatus').value=p.dark.status==='oma'?'vapaa':p.dark.status;
   document.getElementById('fDarkDate').value=p.dark.date||'';
+  document.getElementById('fDarkOmaDate').value=p.dark.oma_date||'';
   document.getElementById('fLightOwn').value=p.light.own;
   document.getElementById('fLightStatus').value=p.light.status==='oma'?'vapaa':p.light.status;
   document.getElementById('fLightDate').value=p.light.date||'';
+  document.getElementById('fLightOmaDate').value=p.light.oma_date||'';
   updateOwnFields();openModal('editModal');
 }
 function updateOwnFields(){
-  document.getElementById('fDarkLoanFields').style.display=document.getElementById('fDarkOwn').value==='oma'?'none':'';
-  document.getElementById('fLightLoanFields').style.display=document.getElementById('fLightOwn').value==='oma'?'none':'';
+  const dOma=document.getElementById('fDarkOwn').value==='oma';
+  const lOma=document.getElementById('fLightOwn').value==='oma';
+  document.getElementById('fDarkLoanFields').style.display=dOma?'none':'';
+  document.getElementById('fDarkOmaFields').style.display=dOma?'':'none';
+  document.getElementById('fLightLoanFields').style.display=lOma?'none':'';
+  document.getElementById('fLightOmaFields').style.display=lOma?'':'none';
 }
 async function saveEntry(){
   const num=document.getElementById('fNum').value.trim();
@@ -546,19 +556,21 @@ async function saveEntry(){
   const dOwn=document.getElementById('fDarkOwn').value;
   const dStatus=dOwn==='oma'?'oma':document.getElementById('fDarkStatus').value;
   const dDate=dOwn==='oma'?null:document.getElementById('fDarkDate').value||null;
+  const dOmaDate=dOwn==='oma'?document.getElementById('fDarkOmaDate').value||null:null;
   const lOwn=document.getElementById('fLightOwn').value;
   const lStatus=lOwn==='oma'?'oma':document.getElementById('fLightStatus').value;
   const lDate=lOwn==='oma'?null:document.getElementById('fLightDate').value||null;
+  const lOmaDate=lOwn==='oma'?document.getElementById('fLightOmaDate').value||null:null;
   const notes=document.getElementById('fNotes').value.trim();
   const saveBtn=document.getElementById('saveBtn');saveBtn.disabled=true;setLoading(true);
   try{
     if(editingId){
       const p=data.find(x=>x.id===editingId);const before=JSON.parse(JSON.stringify(p));
       p.num=num;p.size=size;p.name=name;p.notes=notes;
-      p.dark={own:dOwn,status:dStatus,date:dDate};p.light={own:lOwn,status:lStatus,date:lDate};
+      p.dark={own:dOwn,status:dStatus,date:dDate,oma_date:dOmaDate};p.light={own:lOwn,status:lStatus,date:lDate,oma_date:lOmaDate};
       await updatePlayer(p);await addLog('Muokattu',p.id,name||'#'+num,before,p);
     }else{
-      const p={id:gid(),num,size,name,notes,dark:{own:dOwn,status:dStatus,date:dDate},light:{own:lOwn,status:lStatus,date:lDate}};
+      const p={id:gid(),num,size,name,notes,dark:{own:dOwn,status:dStatus,date:dDate,oma_date:dOmaDate},light:{own:lOwn,status:lStatus,date:lDate,oma_date:lOmaDate}};
       await insertPlayer(p);await addLog('Lisätty',p.id,name||'#'+num,null,p);
     }
     showToast('Tallennettu ✓');closeModal('editModal');await loadData();
@@ -570,24 +582,81 @@ async function saveEntry(){
 function openReturnModal(id){
   const p=data.find(x=>x.id===id);if(!p)return;
   actionTarget=id;document.getElementById('actionModalTitle').textContent='Palauta: '+(p.name||'#'+p.num);
-  const items=[];
-  if(p.dark.own==='seura'&&p.dark.status==='lainassa')items.push({k:'dark__palautettu',l:'🟫 Tumma paita → Palautettu'});
-  if(p.light.own==='seura'&&p.light.status==='lainassa')items.push({k:'light__palautettu',l:'⬜ Vaalea paita → Palautettu'});
-  if(p.dark.own==='seura'&&p.dark.status==='kadonnut')items.push({k:'dark__palautettu',l:'🟫 Tumma (kadonnut) → Palautettu'});
-  if(p.light.own==='seura'&&p.light.status==='kadonnut')items.push({k:'light__palautettu',l:'⬜ Vaalea (kadonnut) → Palautettu'});
-  if(p.dark.own==='seura'&&p.dark.status==='lainassa')items.push({k:'dark__kadonnut',l:'⚠️ Tumma paita kadonnut'});
-  if(p.light.own==='seura'&&p.light.status==='lainassa')items.push({k:'light__kadonnut',l:'⚠️ Vaalea paita kadonnut'});
-  document.getElementById('actionModalContent').innerHTML='<p style="margin-bottom:12px;font-size:.875rem;color:var(--text2)">Valitse toiminto:</p>'+
-    items.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem"><input type="radio" name="ra" value="${it.k}" style="flex-shrink:0">${it.l}</label>`).join('');
-  document.getElementById('actionConfirmBtn').onclick=doReturnAction;openModal('actionModal');
+
+  const jerseys=[];
+  if(p.dark.own==='seura'&&['lainassa','kadonnut'].includes(p.dark.status))
+    jerseys.push({key:'dark',label:'🟫 Tumma paita',current:p.dark.status});
+  if(p.light.own==='seura'&&['lainassa','kadonnut'].includes(p.light.status))
+    jerseys.push({key:'light',label:'⬜ Vaalea paita',current:p.light.status});
+
+  const statusColor={lainassa:'var(--yellow)',kadonnut:'var(--red)',palautettu:'var(--green)'};
+  const statusLabel={lainassa:'Lainassa',kadonnut:'Kadonnut',palautettu:'Palautettu'};
+
+  document.getElementById('actionModalContent').innerHTML=
+    `<p style="margin-bottom:14px;font-size:.875rem;color:var(--text2)">Valitse uusi tila per paita:</p>`+
+    jerseys.map(j=>`
+      <div style="border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin-bottom:10px;background:var(--surface2);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:700;font-size:.9rem">${j.label}</div>
+            <div style="font-size:.75rem;color:${statusColor[j.current]};margin-top:2px;font-weight:600">Nyt: ${statusLabel[j.current]}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:.8rem;font-weight:600;border:2px solid var(--border);background:var(--surface);transition:all .15s;" id="lbl_${j.key}_palautettu">
+              <input type="checkbox" name="ret_${j.key}" value="palautettu" style="display:none" onchange="updateReturnLabel('${j.key}')">
+              ✓ Palautettu
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:.8rem;font-weight:600;border:2px solid var(--border);background:var(--surface);transition:all .15s;" id="lbl_${j.key}_kadonnut">
+              <input type="checkbox" name="ret_${j.key}" value="kadonnut" style="display:none" onchange="updateReturnLabel('${j.key}')">
+              ⚠ Kadonnut
+            </label>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+  // Make checkboxes mutually exclusive per jersey (radio-like but styled as toggle buttons)
+  document.querySelectorAll('[name^="ret_"]').forEach(cb=>{
+    cb.addEventListener('change',function(){
+      if(this.checked){
+        const key=this.name.replace('ret_','');
+        document.querySelectorAll(`[name="ret_${key}"]`).forEach(o=>{if(o!==this)o.checked=false;});
+      }
+      updateReturnLabel(this.name.replace('ret_',''));
+    });
+  });
+
+  document.getElementById('actionConfirmBtn').onclick=doReturnAction;
+  openModal('actionModal');
+}
+function updateReturnLabel(key){
+  ['palautettu','kadonnut'].forEach(val=>{
+    const lbl=document.getElementById('lbl_'+key+'_'+val);
+    const cb=lbl?.querySelector('input');
+    if(!lbl||!cb)return;
+    if(cb.checked){
+      if(val==='palautettu'){lbl.style.borderColor='var(--green)';lbl.style.background='var(--green-light)';lbl.style.color='var(--green)';}
+      else{lbl.style.borderColor='var(--red)';lbl.style.background='var(--red-light)';lbl.style.color='var(--red)';}
+    }else{
+      lbl.style.borderColor='var(--border)';lbl.style.background='var(--surface)';lbl.style.color='var(--text2)';
+    }
+  });
 }
 async function doReturnAction(){
-  const sel=document.querySelector('input[name="ra"]:checked');if(!sel){showToast('Valitse toiminto',true);return;}
-  const[key,action]=sel.value.split('__');
-  const p=data.find(x=>x.id===actionTarget);const before=JSON.parse(JSON.stringify(p));
-  p[key].status=action;setLoading(true);
-  try{await updatePlayer(p);await addLog(action==='palautettu'?'Palautettu':'Merkitty kadonneeksi',p.id,p.name,before,p);showToast('Päivitetty ✓');closeModal('actionModal');await loadData();}
-  catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
+  const p=data.find(x=>x.id===actionTarget);
+  const before=JSON.parse(JSON.stringify(p));
+  let changed=0;
+  ['dark','light'].forEach(key=>{
+    const checked=document.querySelector(`[name="ret_${key}"]:checked`);
+    if(checked){p[key].status=checked.value;changed++;}
+  });
+  if(!changed){showToast('Valitse vähintään yksi toiminto',true);return;}
+  setLoading(true);
+  try{
+    await updatePlayer(p);
+    await addLog('Palautus/katoaminen kirjattu',p.id,p.name,before,p);
+    showToast('Päivitetty ✓');closeModal('actionModal');await loadData();
+  }catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
 }
 function openReloanModal(id){
   const p=data.find(x=>x.id===id);if(!p)return;

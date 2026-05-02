@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pelipaita Seuranta</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f5f4f0;--surface:#fff;--surface2:#f0eeea;--border:#e2dfd8;--text:#1a1814;--text2:#6b6660;--text3:#a09c97;--accent:#2563eb;--accent-light:#dbeafe;--green:#16a34a;--green-light:#dcfce7;--red:#dc2626;--red-light:#fee2e2;--orange:#ea580c;--orange-light:#ffedd5;--yellow:#ca8a04;--yellow-light:#fef9c3;--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-lg:0 10px 15px rgba(0,0,0,.08),0 4px 6px rgba(0,0,0,.05);--r:10px;--rs:6px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* LOGIN */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:var(--shadow-lg);}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.login-logo h2{font-size:1.15rem;font-weight:700;letter-spacing:-.02em;}
+.login-card p{font-size:.85rem;color:var(--text3);margin-bottom:20px;}
+.login-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.login-field label{font-size:.78rem;font-weight:600;color:var(--text2);}
+.login-field input{padding:10px 12px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:.9rem;outline:none;transition:border-color .15s;}
+.login-field input:focus{border-color:var(--accent);}
+.login-error{display:none;color:var(--red);font-size:.8rem;margin-bottom:12px;padding:8px 10px;background:var(--red-light);border-radius:var(--rs);}
+.login-error.show{display:block;}
+.btn-login{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:var(--rs);font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s;}
+.btn-login:hover{background:#1d4ed8;}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;}
+
+/* APP */
+#appScreen{display:none;}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1814;color:#fff;padding:10px 20px;border-radius:8px;font-size:.875rem;font-weight:500;z-index:9999;transition:transform .25s;pointer-events:none;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+#toast.error{background:var(--red);}
+#loadingBar{position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);z-index:9998;transform:scaleX(0);transform-origin:left;transition:transform .3s;display:none;}
+#loadingBar.active{display:block;transform:scaleX(.7);}
+#loadingBar.done{transform:scaleX(1);opacity:0;transition:transform .2s,opacity .3s .2s;}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:12px;height:60px;position:sticky;top:0;z-index:100;}
+header h1{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;}
+header .subtitle{color:var(--text3);font-size:.78rem;}
+header .spacer{flex:1;}
+.stats-chips{display:flex;gap:8px;align-items:center;}
+.chip{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.73rem;font-weight:600;}
+.chip.blue{background:var(--accent-light);color:var(--accent);}
+.chip.green{background:var(--green-light);color:var(--green);}
+.chip.red{background:var(--red-light);color:var(--red);}
+.db-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;cursor:help;}
+.db-dot.err{background:var(--red);}
+.db-dot.loading{background:var(--yellow);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.logout-btn{padding:5px 11px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surface2);font-family:inherit;font-size:.77rem;font-weight:600;cursor:pointer;color:var(--text2);}
+.logout-btn:hover{border-color:var(--red);color:var(--red);}
+
+/* TOOLBAR */
+.toolbar{padding:13px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:7px 12px;flex:1;min-width:180px;}
+.search-box input{border:none;outline:none;font-family:inherit;font-size:.875rem;background:transparent;width:100%;color:var(--text);}
+.filter-group{display:flex;gap:5px;flex-wrap:wrap;}
+.filter-btn{padding:6px 12px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surface);font-family:inherit;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .15s;color:var(--text2);}
+.filter-btn:hover{border-color:var(--accent);color:var(--accent);}
+.filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn{padding:7px 14px;border-radius:var(--rs);border:none;font-family:inherit;font-size:.875rem;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover:not(:disabled){background:#1d4ed8;}
+.btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text2);}
+.btn-secondary:hover:not(:disabled){border-color:var(--text2);color:var(--text);}
+.btn-sm{padding:4px 9px;font-size:.77rem;}
+.btn-danger{background:var(--red-light);color:var(--red);border:1px solid #fca5a5;}
+.btn-success{background:var(--green-light);color:var(--green);border:1px solid #86efac;}
+.btn-warning{background:var(--orange-light);color:var(--orange);border:1px solid #fdba74;}
+
+/* BULK */
+.bulk-bar{display:none;align-items:center;gap:10px;padding:9px 16px;background:var(--accent-light);border-bottom:1px solid var(--border);font-size:.875rem;font-weight:600;color:var(--accent);flex-wrap:wrap;}
+.bulk-bar.visible{display:flex;}
+
+/* TABLE */
+.main{padding:20px 24px;}
+.table-wrap{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;font-size:.875rem;}
+thead th{padding:9px 13px;text-align:left;font-size:.69rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:#fafaf8;}
+tbody td{padding:9px 13px;vertical-align:middle;}
+.jersey-num{font-family:'DM Mono',monospace;font-weight:600;font-size:1rem;color:var(--accent);}
+.size-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.71rem;font-weight:600;background:var(--surface2);color:var(--text2);font-family:'DM Mono',monospace;}
+.player-name{font-weight:600;}
+.date-text{font-size:.77rem;color:var(--text2);font-family:'DM Mono',monospace;}
+.status-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:.71rem;font-weight:600;white-space:nowrap;}
+.status-pill.lainassa{background:var(--yellow-light);color:var(--yellow);}
+.status-pill.palautettu{background:var(--green-light);color:var(--green);}
+.status-pill.kadonnut{background:var(--red-light);color:var(--red);}
+.status-pill.oma{background:var(--surface2);color:var(--text3);}
+.status-pill.vapaa{background:var(--accent-light);color:var(--accent);}
+.sdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.actions-cell{display:flex;gap:5px;flex-wrap:wrap;}
+.empty-state{padding:50px 20px;text-align:center;color:var(--text3);}
+.empty-state .icon{font-size:2.5rem;margin-bottom:10px;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:14px;box-shadow:var(--shadow-lg);width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
+.modal-sm{max-width:420px;}
+.modal-header{padding:17px 22px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:1rem;font-weight:700;}
+.modal-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:1.1rem;line-height:1;}
+.modal-close:hover{background:var(--border);}
+.modal-body{padding:18px 22px;}
+.modal-footer{padding:13px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+label{font-size:.77rem;font-weight:600;color:var(--text2);}
+input[type=text],input[type=date],input[type=password],select,textarea{padding:8px 10px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:.875rem;background:var(--surface);color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:56px;}
+.section-label{font-size:.69rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.jersey-config{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.jersey-card{border:1px solid var(--border);border-radius:var(--rs);padding:12px;background:var(--surface2);}
+.jersey-card-title{font-size:.8rem;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.cdark{width:10px;height:10px;border-radius:50%;background:#1e293b;display:inline-block;}
+.clight{width:10px;height:10px;border-radius:50%;background:#e2e8f0;border:1px solid #cbd5e1;display:inline-block;}
+
+/* LOG */
+.log-entry{padding:10px 14px;border-bottom:1px solid var(--border);font-size:.8rem;}
+.log-entry:last-child{border-bottom:none;}
+.log-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.log-time{color:var(--text3);font-family:'DM Mono',monospace;font-size:.72rem;}
+.log-ip{color:var(--text3);font-family:'DM Mono',monospace;font-size:.72rem;background:var(--surface2);padding:1px 6px;border-radius:4px;}
+.log-action{font-weight:600;}
+.log-detail{color:var(--text2);margin-top:3px;font-size:.75rem;}
+
+/* HISTORY */
+.history-snapshot{border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;overflow:hidden;}
+.history-snap-header{padding:8px 12px;background:var(--surface2);display:flex;align-items:center;justify-content:space-between;font-size:.78rem;cursor:pointer;}
+.history-snap-header:hover{background:var(--border);}
+.history-snap-body{padding:10px 12px;font-size:.8rem;display:none;}
+.history-snap-body.open{display:block;}
+.snapshot-row{display:flex;gap:8px;margin-bottom:4px;}
+.snapshot-key{color:var(--text3);min-width:110px;font-size:.75rem;}
+.snapshot-val{font-weight:500;}
+
+@media(max-width:900px){
+  .main{padding:12px;}.toolbar{padding:10px 12px;}header{padding:0 12px;}
+  .stats-chips{display:none;}table{font-size:.79rem;}tbody td,thead th{padding:7px 9px;}
+  .form-grid{grid-template-columns:1fr;}.jersey-config{grid-template-columns:1fr;}
+}
+@media(max-width:600px){.actions-cell{flex-direction:column;}}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>
+      <h2>Pelipaita Seuranta</h2>
+    </div>
+    <p>Kirjaudu sisään jatkaaksesi.</p>
+    <div class="login-field">
+      <label>Salasana</label>
+      <input type="password" id="loginPw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-error" id="loginError">Väärä salasana.</div>
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">Kirjaudu sisään</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="appScreen">
+<div id="loadingBar"></div>
+<div id="toast"></div>
+
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>
+  <div><h1>Pelipaita Seuranta</h1><span class="subtitle">Joukkueen varustehallinta</span></div>
+  <div class="spacer"></div>
+  <div class="stats-chips" id="statsChips"></div>
+  <div class="db-dot loading" id="dbDot" title="Yhdistetään…"></div>
+  <button class="btn btn-secondary btn-sm" onclick="openSettingsModal()">⚙️ Asetukset</button>
+  <button class="logout-btn" onclick="doLogout()">Kirjaudu ulos</button>
+</header>
+
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a09c97" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="Hae nimellä tai numerolla…" oninput="renderTable()">
+  </div>
+  <div class="filter-group">
+    <button class="filter-btn active" onclick="setFilter('kaikki',this)">Kaikki</button>
+    <button class="filter-btn" onclick="setFilter('lainassa',this)">Lainassa</button>
+    <button class="filter-btn" onclick="setFilter('palautettu',this)">Palautettu</button>
+    <button class="filter-btn" onclick="setFilter('kadonnut',this)">Kadonneet</button>
+    <button class="filter-btn" onclick="setFilter('vapaa',this)">Vapaat</button>
+  </div>
+  <button class="btn btn-secondary" onclick="openLogModal()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Loki
+  </button>
+  <button class="btn btn-primary" onclick="openAddModal()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Lisää paita
+  </button>
+</div>
+
+<div class="bulk-bar" id="bulkBar">
+  <span id="bulkCount">0 valittu</span>
+  <button class="btn btn-sm btn-success" onclick="bulkAction('palauta')">✓ Palautettu</button>
+  <button class="btn btn-sm btn-warning" onclick="bulkAction('lainaa')">→ Lainaa uudelleen</button>
+  <button class="btn btn-sm btn-danger" onclick="bulkAction('kadonnut')">! Kadonnut</button>
+  <button class="btn btn-sm btn-secondary" onclick="clearSelection()">✕ Poista valinta</button>
+</div>
+
+<div class="main">
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+        <th>Nro</th><th>Koko</th><th>Pelaaja</th>
+        <th>Tumma</th><th>Vaalea</th><th>Annettu</th><th>Toiminnot</th>
+      </tr></thead>
+      <tbody id="tableBody"><tr><td colspan="8"><div class="empty-state"><div>Ladataan…</div></div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ADD/EDIT -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="editModalTitle">Lisää pelaaja</span><button class="modal-close" onclick="closeModal('editModal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Pelinumero</label><input type="text" id="fNum" placeholder="esim. 10" maxlength="4"></div>
+        <div class="form-group"><label>Koko</label><select id="fSize"><option value="">– valitse –</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL</option><option>140</option><option>152</option><option>164</option><option>176</option></select></div>
+        <div class="form-group full"><label>Pelaajan nimi</label><input type="text" id="fName" placeholder="Etunimi Sukunimi"></div>
+      </div>
+      <div class="section-label">Paidat</div>
+      <div class="jersey-config">
+        <div class="jersey-card">
+          <div class="jersey-card-title"><span class="cdark"></span> Tumma paita</div>
+          <div class="form-group"><label>Omistus</label><select id="fDarkOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
+          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus"><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
+        </div>
+        <div class="jersey-card">
+          <div class="jersey-card-title"><span class="clight"></span> Vaalea paita</div>
+          <div class="form-group"><label>Omistus</label><select id="fLightOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
+          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus"><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
+        </div>
+      </div>
+      <div class="section-label">Lisätiedot</div>
+      <div class="form-group"><label>Huomiot</label><textarea id="fNotes" placeholder="Vapaa muistiinpano…" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editModal')">Peruuta</button><button class="btn btn-primary" onclick="saveEntry()" id="saveBtn">Tallenna</button></div>
+  </div>
+</div>
+
+<!-- ACTION -->
+<div class="modal-overlay" id="actionModal">
+  <div class="modal modal-sm">
+    <div class="modal-header"><span class="modal-title" id="actionModalTitle">Toiminto</span><button class="modal-close" onclick="closeModal('actionModal')">×</button></div>
+    <div class="modal-body"><div id="actionModalContent"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('actionModal')">Peruuta</button><button class="btn btn-primary" id="actionConfirmBtn">Vahvista</button></div>
+  </div>
+</div>
+
+<!-- LOG -->
+<div class="modal-overlay" id="logModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header"><span class="modal-title">Muutosloki</span><button class="modal-close" onclick="closeModal('logModal')">×</button></div>
+    <div class="modal-body" style="padding:0"><div id="logContent"></div></div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header"><span class="modal-title" id="historyModalTitle">Historia</span><button class="modal-close" onclick="closeModal('historyModal')">×</button></div>
+    <div class="modal-body"><div id="historyContent"></div></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal modal-sm">
+    <div class="modal-header"><span class="modal-title">⚙️ Asetukset</span><button class="modal-close" onclick="closeModal('settingsModal')">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">Vaihda salasana</div>
+      <div class="form-group"><label>Nykyinen salasana</label><input type="password" id="sCurrent" placeholder="••••••••"></div>
+      <div class="form-group" style="margin-top:10px"><label>Uusi salasana</label><input type="password" id="sNew" placeholder="••••••••"></div>
+      <div class="form-group" style="margin-top:10px"><label>Uusi salasana uudelleen</label><input type="password" id="sNew2" placeholder="••••••••"></div>
+      <div class="login-error" id="settingsError" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('settingsModal')">Peruuta</button><button class="btn btn-primary" onclick="changePassword()">Vaihda salasana</button></div>
+  </div>
+</div>
+
+</div><!-- /appScreen -->
+
+<script>
+const SUPA_URL='https://dmsmfiyixgrxpqvpgmpq.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtc21maXlpeGdyeHBxdnBnbXBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MjgyNzAsImV4cCI6MjA5MzMwNDI3MH0.lK04eWtUQuQ0Hf3DZp6nRLQ_f4C-frn8f8LQ9CUjjjI';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+const SESSION_KEY='pps_auth_v1';
+let data=[],currentFilter='kaikki',selectedIds=new Set(),editingId=null,actionTarget=null;
+
+// ── AUTH ──────────────────────────────────────
+async function doLogin(){
+  const pw=document.getElementById('loginPw').value;
+  if(!pw)return;
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent='Tarkistetaan…';
+  document.getElementById('loginError').classList.remove('show');
+  try{
+    const{data:row,error}=await sb.from('settings').select('value').eq('key','password').single();
+    if(error)throw error;
+    if(row.value===pw){
+      sessionStorage.setItem(SESSION_KEY,'1');
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('appScreen').style.display='block';
+      loadData();
+    }else{
+      document.getElementById('loginError').textContent='Väärä salasana.';
+      document.getElementById('loginError').classList.add('show');
+      btn.disabled=false;btn.textContent='Kirjaudu sisään';
+    }
+  }catch(e){
+    document.getElementById('loginError').textContent='Yhteysvirhe: '+e.message;
+    document.getElementById('loginError').classList.add('show');
+    btn.disabled=false;btn.textContent='Kirjaudu sisään';
+  }
+}
+function doLogout(){
+  sessionStorage.removeItem(SESSION_KEY);
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginPw').value='';
+}
+async function changePassword(){
+  const cur=document.getElementById('sCurrent').value;
+  const nw=document.getElementById('sNew').value;
+  const nw2=document.getElementById('sNew2').value;
+  const errEl=document.getElementById('settingsError');
+  errEl.classList.remove('show');
+  if(!cur||!nw||!nw2){errEl.textContent='Täytä kaikki kentät.';errEl.classList.add('show');return;}
+  if(nw!==nw2){errEl.textContent='Uudet salasanat eivät täsmää.';errEl.classList.add('show');return;}
+  if(nw.length<4){errEl.textContent='Salasanan oltava vähintään 4 merkkiä.';errEl.classList.add('show');return;}
+  const{data:row}=await sb.from('settings').select('value').eq('key','password').single();
+  if(!row||row.value!==cur){errEl.textContent='Nykyinen salasana on väärä.';errEl.classList.add('show');return;}
+  await sb.from('settings').update({value:nw,updated_at:new Date().toISOString()}).eq('key','password');
+  showToast('Salasana vaihdettu ✓');closeModal('settingsModal');
+  ['sCurrent','sNew','sNew2'].forEach(id=>document.getElementById(id).value='');
+}
+// Check session on load
+if(sessionStorage.getItem(SESSION_KEY)){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+}
+
+// ── HELPERS ───────────────────────────────────
+function showToast(msg,isErr=false,dur=2500){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show'+(isErr?' error':'');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.className='',dur);
+}
+function setLoading(on){
+  const b=document.getElementById('loadingBar');
+  if(on){b.className='active';b.style.display='block';}
+  else{b.className='done';setTimeout(()=>{b.style.display='none';b.className='';},600);}
+}
+function setDbStatus(s){
+  const d=document.getElementById('dbDot');
+  d.className='db-dot '+s;
+  d.title=s==='loading'?'Yhdistetään…':s==='err'?'Yhteysvirhe':'Tietokanta OK';
+}
+function fmtDate(d){if(!d)return'–';return new Date(d).toLocaleDateString('fi-FI');}
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+async function getIP(){try{const r=await fetch('https://api.ipify.org?format=json');return(await r.json()).ip;}catch{return'tuntematon';}}
+
+// ── SUPABASE CRUD ─────────────────────────────
+function rowToPlayer(r){
+  return{id:r.id,num:r.num||'',size:r.size||'',name:r.name||'',notes:r.notes||'',
+    dark:{own:r.dark_own,status:r.dark_status,date:r.dark_date},
+    light:{own:r.light_own,status:r.light_status,date:r.light_date}};
+}
+function playerToRow(p){
+  return{id:p.id,num:p.num,size:p.size,name:p.name,notes:p.notes,
+    dark_own:p.dark.own,dark_status:p.dark.status,dark_date:p.dark.date||null,
+    light_own:p.light.own,light_status:p.light.status,light_date:p.light.date||null,
+    updated_at:new Date().toISOString()};
+}
+async function loadData(){
+  setDbStatus('loading');setLoading(true);
+  try{
+    const{data:rows,error}=await sb.from('jerseys').select('*').order('num');
+    if(error)throw error;
+    data=rows.map(rowToPlayer);setDbStatus('ok');renderTable();
+  }catch(e){setDbStatus('err');showToast('Latausvirhe: '+e.message,true);}
+  finally{setLoading(false);}
+}
+async function insertPlayer(p){const{error}=await sb.from('jerseys').insert(playerToRow(p));if(error)throw error;}
+async function updatePlayer(p){const{error}=await sb.from('jerseys').update(playerToRow(p)).eq('id',p.id);if(error)throw error;}
+async function addLog(action,playerId,playerName,before,after){
+  const ip=await getIP();
+  await sb.from('change_log').insert({id:gid(),action,player_id:playerId,player_name:playerName,before_data:before,after_data:after,ip,ts:new Date().toISOString()});
+}
+async function loadLogs(){
+  const{data:rows}=await sb.from('change_log').select('*').order('ts',{ascending:false}).limit(300);
+  return rows||[];
+}
+async function loadHistory(pid){
+  const{data:rows}=await sb.from('change_log').select('*').eq('player_id',pid).order('ts',{ascending:false});
+  return rows||[];
+}
+
+// ── RENDER ────────────────────────────────────
+function getStatus(p){
+  const st=[];
+  if(p.dark.own==='seura')st.push(p.dark.status);
+  if(p.light.own==='seura')st.push(p.light.status);
+  if(st.includes('kadonnut'))return'kadonnut';
+  if(st.includes('lainassa'))return'lainassa';
+  if(st.length&&st.every(s=>s==='palautettu'))return'palautettu';
+  if(st.length&&st.every(s=>s==='vapaa'))return'vapaa';
+  return'oma';
+}
+function pill(j){
+  if(j.own==='oma')return'<span class="status-pill oma"><span class="sdot"></span>Oma</span>';
+  const lbl={lainassa:'Lainassa',palautettu:'Palautettu',kadonnut:'Kadonnut',vapaa:'Vapaa'};
+  return`<span class="status-pill ${j.status}"><span class="sdot"></span>${lbl[j.status]||j.status}</span>`;
+}
+function canReturn(p){return(p.dark.own==='seura'&&['lainassa','kadonnut'].includes(p.dark.status))||(p.light.own==='seura'&&['lainassa','kadonnut'].includes(p.light.status));}
+function canReloan(p){return(p.dark.own==='seura'&&p.dark.status==='palautettu')||(p.light.own==='seura'&&p.light.status==='palautettu');}
+
+function renderTable(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  let rows=data.filter(p=>{
+    if(q&&!p.name.toLowerCase().includes(q)&&!p.num.includes(q))return false;
+    if(currentFilter==='kaikki')return true;
+    return getStatus(p)===currentFilter;
+  }).sort((a,b)=>(parseInt(a.num)||999)-(parseInt(b.num)||999));
+  const tbody=document.getElementById('tableBody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">🏅</div><div>Ei tuloksia</div></div></td></tr>';updateStats();return;}
+  tbody.innerHTML=rows.map(p=>{
+    const dd=p.dark.own==='seura'&&p.dark.date?fmtDate(p.dark.date):'';
+    const ld=p.light.own==='seura'&&p.light.date?fmtDate(p.light.date):'';
+    return`<tr>
+      <td><input type="checkbox" ${selectedIds.has(p.id)?'checked':''} onchange="toggleSelect('${p.id}',this.checked)"></td>
+      <td><span class="jersey-num">${p.num||'–'}</span></td>
+      <td><span class="size-badge">${p.size||'–'}</span></td>
+      <td><div class="player-name">${p.name||'<span style="color:var(--text3);font-weight:400">–</span>'}</div>${p.notes?`<div style="font-size:.7rem;color:var(--text3);margin-top:2px">${p.notes}</div>`:''}</td>
+      <td>${pill(p.dark)}</td>
+      <td>${pill(p.light)}</td>
+      <td><span class="date-text">${dd||ld||'–'}</span></td>
+      <td><div class="actions-cell">
+        <button class="btn btn-sm btn-secondary" onclick="openEditModal('${p.id}')">✏️ Muokkaa</button>
+        <button class="btn btn-sm btn-secondary" onclick="openHistory('${p.id}')">📋 Hist.</button>
+        ${canReturn(p)?`<button class="btn btn-sm btn-success" onclick="openReturnModal('${p.id}')">↩ Palauta</button>`:''}
+        ${canReloan(p)?`<button class="btn btn-sm btn-warning" onclick="openReloanModal('${p.id}')">→ Lainaa</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+  updateStats();updateBulkBar();
+}
+function updateStats(){
+  let l=0,p=0,k=0,v=0;
+  data.forEach(x=>{const s=getStatus(x);if(s==='lainassa')l++;else if(s==='palautettu')p++;else if(s==='kadonnut')k++;else if(s==='vapaa')v++;});
+  document.getElementById('statsChips').innerHTML=`<span class="chip blue">🟡 ${l} lainassa</span><span class="chip green">✓ ${p} palautettu</span><span class="chip red">! ${k} kadonnut</span>`;
+}
+function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTable();}
+
+// ── SELECTION ─────────────────────────────────
+function toggleSelect(id,checked){if(checked)selectedIds.add(id);else selectedIds.delete(id);updateBulkBar();}
+function toggleSelectAll(){
+  const all=document.getElementById('selectAll').checked;
+  document.querySelectorAll('tbody input[type=checkbox]').forEach(cb=>{
+    cb.checked=all;
+    const m=cb.closest('tr')?.querySelector('[onclick*=openEditModal]')?.getAttribute('onclick')?.match(/'([^']+)'/);
+    if(m){if(all)selectedIds.add(m[1]);else selectedIds.delete(m[1]);}
+  });
+  updateBulkBar();
+}
+function clearSelection(){selectedIds.clear();document.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);updateBulkBar();}
+function updateBulkBar(){const n=selectedIds.size;document.getElementById('bulkBar').classList.toggle('visible',n>0);if(n>0)document.getElementById('bulkCount').textContent=n+' valittu';}
+
+async function bulkAction(type){
+  if(!selectedIds.size)return;setLoading(true);
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    for(const id of selectedIds){
+      const p=data.find(x=>x.id===id);if(!p)continue;
+      const before=JSON.parse(JSON.stringify(p));
+      if(type==='palauta'){
+        if(p.dark.own==='seura'&&['lainassa','kadonnut'].includes(p.dark.status))p.dark.status='palautettu';
+        if(p.light.own==='seura'&&['lainassa','kadonnut'].includes(p.light.status))p.light.status='palautettu';
+      }else if(type==='lainaa'){
+        if(p.dark.own==='seura'&&p.dark.status==='palautettu'){p.dark.status='lainassa';p.dark.date=today;}
+        if(p.light.own==='seura'&&p.light.status==='palautettu'){p.light.status='lainassa';p.light.date=today;}
+      }else if(type==='kadonnut'){
+        if(p.dark.own==='seura'&&p.dark.status==='lainassa')p.dark.status='kadonnut';
+        if(p.light.own==='seura'&&p.light.status==='lainassa')p.light.status='kadonnut';
+      }
+      await updatePlayer(p);await addLog('Massatoiminto: '+type,p.id,p.name,before,p);
+    }
+    showToast('Valmis ✓');clearSelection();await loadData();
+  }catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
+}
+
+// ── ADD/EDIT ──────────────────────────────────
+function openAddModal(){
+  editingId=null;document.getElementById('editModalTitle').textContent='Lisää pelaaja';
+  ['fNum','fName','fNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fSize').value='';
+  document.getElementById('fDarkOwn').value='seura';document.getElementById('fDarkStatus').value='lainassa';
+  document.getElementById('fDarkDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('fLightOwn').value='seura';document.getElementById('fLightStatus').value='lainassa';
+  document.getElementById('fLightDate').value=new Date().toISOString().slice(0,10);
+  updateOwnFields();openModal('editModal');
+}
+function openEditModal(id){
+  const p=data.find(x=>x.id===id);if(!p)return;
+  editingId=id;document.getElementById('editModalTitle').textContent='Muokkaa: '+(p.name||'#'+p.num);
+  document.getElementById('fNum').value=p.num;document.getElementById('fSize').value=p.size;
+  document.getElementById('fName').value=p.name;document.getElementById('fNotes').value=p.notes;
+  document.getElementById('fDarkOwn').value=p.dark.own;
+  document.getElementById('fDarkStatus').value=p.dark.status==='oma'?'vapaa':p.dark.status;
+  document.getElementById('fDarkDate').value=p.dark.date||'';
+  document.getElementById('fLightOwn').value=p.light.own;
+  document.getElementById('fLightStatus').value=p.light.status==='oma'?'vapaa':p.light.status;
+  document.getElementById('fLightDate').value=p.light.date||'';
+  updateOwnFields();openModal('editModal');
+}
+function updateOwnFields(){
+  document.getElementById('fDarkLoanFields').style.display=document.getElementById('fDarkOwn').value==='oma'?'none':'';
+  document.getElementById('fLightLoanFields').style.display=document.getElementById('fLightOwn').value==='oma'?'none':'';
+}
+async function saveEntry(){
+  const num=document.getElementById('fNum').value.trim();
+  const size=document.getElementById('fSize').value;
+  const name=document.getElementById('fName').value.trim();
+  if(!num&&!name){showToast('Anna numero tai nimi',true);return;}
+  const dOwn=document.getElementById('fDarkOwn').value;
+  const dStatus=dOwn==='oma'?'oma':document.getElementById('fDarkStatus').value;
+  const dDate=dOwn==='oma'?null:document.getElementById('fDarkDate').value||null;
+  const lOwn=document.getElementById('fLightOwn').value;
+  const lStatus=lOwn==='oma'?'oma':document.getElementById('fLightStatus').value;
+  const lDate=lOwn==='oma'?null:document.getElementById('fLightDate').value||null;
+  const notes=document.getElementById('fNotes').value.trim();
+  const saveBtn=document.getElementById('saveBtn');saveBtn.disabled=true;setLoading(true);
+  try{
+    if(editingId){
+      const p=data.find(x=>x.id===editingId);const before=JSON.parse(JSON.stringify(p));
+      p.num=num;p.size=size;p.name=name;p.notes=notes;
+      p.dark={own:dOwn,status:dStatus,date:dDate};p.light={own:lOwn,status:lStatus,date:lDate};
+      await updatePlayer(p);await addLog('Muokattu',p.id,name||'#'+num,before,p);
+    }else{
+      const p={id:gid(),num,size,name,notes,dark:{own:dOwn,status:dStatus,date:dDate},light:{own:lOwn,status:lStatus,date:lDate}};
+      await insertPlayer(p);await addLog('Lisätty',p.id,name||'#'+num,null,p);
+    }
+    showToast('Tallennettu ✓');closeModal('editModal');await loadData();
+  }catch(e){showToast('Virhe: '+e.message,true);}
+  finally{saveBtn.disabled=false;setLoading(false);}
+}
+
+// ── RETURN / RELOAN ───────────────────────────
+function openReturnModal(id){
+  const p=data.find(x=>x.id===id);if(!p)return;
+  actionTarget=id;document.getElementById('actionModalTitle').textContent='Palauta: '+(p.name||'#'+p.num);
+  const items=[];
+  if(p.dark.own==='seura'&&p.dark.status==='lainassa')items.push({k:'dark__palautettu',l:'🟫 Tumma paita → Palautettu'});
+  if(p.light.own==='seura'&&p.light.status==='lainassa')items.push({k:'light__palautettu',l:'⬜ Vaalea paita → Palautettu'});
+  if(p.dark.own==='seura'&&p.dark.status==='kadonnut')items.push({k:'dark__palautettu',l:'🟫 Tumma (kadonnut) → Palautettu'});
+  if(p.light.own==='seura'&&p.light.status==='kadonnut')items.push({k:'light__palautettu',l:'⬜ Vaalea (kadonnut) → Palautettu'});
+  if(p.dark.own==='seura'&&p.dark.status==='lainassa')items.push({k:'dark__kadonnut',l:'⚠️ Tumma paita kadonnut'});
+  if(p.light.own==='seura'&&p.light.status==='lainassa')items.push({k:'light__kadonnut',l:'⚠️ Vaalea paita kadonnut'});
+  document.getElementById('actionModalContent').innerHTML='<p style="margin-bottom:12px;font-size:.875rem;color:var(--text2)">Valitse toiminto:</p>'+
+    items.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem"><input type="radio" name="ra" value="${it.k}" style="flex-shrink:0">${it.l}</label>`).join('');
+  document.getElementById('actionConfirmBtn').onclick=doReturnAction;openModal('actionModal');
+}
+async function doReturnAction(){
+  const sel=document.querySelector('input[name="ra"]:checked');if(!sel){showToast('Valitse toiminto',true);return;}
+  const[key,action]=sel.value.split('__');
+  const p=data.find(x=>x.id===actionTarget);const before=JSON.parse(JSON.stringify(p));
+  p[key].status=action;setLoading(true);
+  try{await updatePlayer(p);await addLog(action==='palautettu'?'Palautettu':'Merkitty kadonneeksi',p.id,p.name,before,p);showToast('Päivitetty ✓');closeModal('actionModal');await loadData();}
+  catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
+}
+function openReloanModal(id){
+  const p=data.find(x=>x.id===id);if(!p)return;
+  actionTarget=id;document.getElementById('actionModalTitle').textContent='Lainaa: '+(p.name||'#'+p.num);
+  const today=new Date().toISOString().slice(0,10),items=[];
+  if(p.dark.own==='seura'&&p.dark.status==='palautettu')items.push('dark');
+  if(p.light.own==='seura'&&p.light.status==='palautettu')items.push('light');
+  document.getElementById('actionModalContent').innerHTML='<p style="margin-bottom:12px;font-size:.875rem;color:var(--text2)">Lainattavat paidat:</p>'+
+    items.map(k=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem"><input type="checkbox" name="rl" value="${k}" checked style="flex-shrink:0">${k==='dark'?'🟫 Tumma':'⬜ Vaalea'} paita</label>`).join('')+
+    `<div class="form-group" style="margin-top:12px"><label>Lainauspäivä</label><input type="date" id="reloanDate" value="${today}"></div>`;
+  document.getElementById('actionConfirmBtn').onclick=doReloanAction;openModal('actionModal');
+}
+async function doReloanAction(){
+  const checks=[...document.querySelectorAll('input[name="rl"]:checked')].map(c=>c.value);
+  if(!checks.length){showToast('Valitse vähintään yksi',true);return;}
+  const date=document.getElementById('reloanDate').value;
+  const p=data.find(x=>x.id===actionTarget);const before=JSON.parse(JSON.stringify(p));
+  checks.forEach(k=>{p[k].status='lainassa';p[k].date=date;});setLoading(true);
+  try{await updatePlayer(p);await addLog('Lainattu uudelleen',p.id,p.name,before,p);showToast('Lainattu ✓');closeModal('actionModal');await loadData();}
+  catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
+}
+
+// ── LOG ───────────────────────────────────────
+async function openLogModal(){
+  document.getElementById('logContent').innerHTML='<div class="empty-state"><div>Ladataan…</div></div>';openModal('logModal');
+  const logs=await loadLogs();
+  if(!logs.length){document.getElementById('logContent').innerHTML='<div class="empty-state"><div class="icon">📋</div><div>Ei lokimerkintöjä</div></div>';return;}
+  document.getElementById('logContent').innerHTML=logs.map(e=>{
+    const ts=new Date(e.ts).toLocaleString('fi-FI');
+    const diff=e.before_data&&e.after_data?diffSummary(e.before_data,e.after_data):'';
+    return`<div class="log-entry"><div class="log-meta"><span class="log-action">${e.action}</span><span style="color:var(--text2);font-size:.8rem">${e.player_name||''}</span></div><div class="log-meta"><span class="log-time">⏱ ${ts}</span><span class="log-ip">IP: ${e.ip||'–'}</span></div>${diff?`<div class="log-detail">${diff}</div>`:''}</div>`;
+  }).join('');
+}
+function diffSummary(b,a){
+  const ch=[];
+  ['num','size','name','notes'].forEach(k=>{if(b[k]!==a[k])ch.push(`${k}: ${b[k]||'–'} → ${a[k]||'–'}`);});
+  ['dark','light'].forEach(c=>{
+    const bj=b[c];const aj=a[c];
+    if(bj&&aj&&bj.status!==aj.status)ch.push(`${c==='dark'?'Tumma':'Vaalea'}: ${bj.status} → ${aj.status}`);
+    if(bj&&aj&&bj.own!==aj.own)ch.push(`${c==='dark'?'Tumma':'Vaalea'} omistus: ${bj.own} → ${aj.own}`);
+  });
+  return ch.join(' | ');
+}
+
+// ── HISTORY ───────────────────────────────────
+async function openHistory(id){
+  const p=data.find(x=>x.id===id);
+  document.getElementById('historyModalTitle').textContent='Historia: '+(p?p.name||'#'+p.num:id);
+  document.getElementById('historyContent').innerHTML='<div class="empty-state"><div>Ladataan…</div></div>';openModal('historyModal');
+  const hist=await loadHistory(id);
+  if(!hist.length){document.getElementById('historyContent').innerHTML='<div class="empty-state"><div>Ei historiaa</div></div>';return;}
+  document.getElementById('historyContent').innerHTML=hist.map((h,i)=>{
+    const ts=new Date(h.ts).toLocaleString('fi-FI');
+    const s=h.after_data;if(!s)return'';
+    const d=s.dark||{own:s.dark_own,status:s.dark_status,date:s.dark_date};
+    const l=s.light||{own:s.light_own,status:s.light_status,date:s.light_date};
+    return`<div class="history-snapshot">
+      <div class="history-snap-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span><strong>${h.action||'Muutos'}</strong> — ${ts}</span><span>▼</span>
+      </div>
+      <div class="history-snap-body ${i===0?'open':''}">
+        <div class="snapshot-row"><span class="snapshot-key">Numero:</span><span class="snapshot-val">${s.num||'–'}</span></div>
+        <div class="snapshot-row"><span class="snapshot-key">Koko:</span><span class="snapshot-val">${s.size||'–'}</span></div>
+        <div class="snapshot-row"><span class="snapshot-key">Nimi:</span><span class="snapshot-val">${s.name||'–'}</span></div>
+        <div class="snapshot-row"><span class="snapshot-key">Tumma:</span><span class="snapshot-val">${d.own==='oma'?'Oma':d.status}${d.date?' ('+fmtDate(d.date)+')':''}</span></div>
+        <div class="snapshot-row"><span class="snapshot-key">Vaalea:</span><span class="snapshot-val">${l.own==='oma'?'Oma':l.status}${l.date?' ('+fmtDate(l.date)+')':''}</span></div>
+        ${s.notes?`<div class="snapshot-row"><span class="snapshot-key">Huomiot:</span><span class="snapshot-val">${s.notes}</span></div>`:''}
+        ${i>0?`<button class="btn btn-sm btn-warning" style="margin-top:10px" onclick="restoreSnap('${id}','${h.id}')">↩ Palauta tämä versio</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function restoreSnap(playerId,histId){
+  if(!confirm('Palautetaanko tämä versio?'))return;
+  const hist=await loadHistory(playerId);
+  const entry=hist.find(h=>h.id===histId);if(!entry)return;
+  const snap=entry.after_data;
+  const p=data.find(x=>x.id===playerId);const before=JSON.parse(JSON.stringify(p));
+  p.num=snap.num;p.size=snap.size;p.name=snap.name;p.notes=snap.notes;
+  p.dark=snap.dark||{own:snap.dark_own,status:snap.dark_status,date:snap.dark_date};
+  p.light=snap.light||{own:snap.light_own,status:snap.light_status,date:snap.light_date};
+  setLoading(true);
+  try{await updatePlayer(p);await addLog('Historia palautettu',p.id,p.name,before,p);showToast('Versio palautettu ✓');closeModal('historyModal');await loadData();}
+  catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
+}
+
+// ── SETTINGS ──────────────────────────────────
+function openSettingsModal(){
+  ['sCurrent','sNew','sNew2'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('settingsError').classList.remove('show');
+  openModal('settingsModal');
+}
+
+// ── MODALS ────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// ── INIT ──────────────────────────────────────
+if(sessionStorage.getItem(SESSION_KEY)){loadData();}
+</script>
+</body>
+</html>

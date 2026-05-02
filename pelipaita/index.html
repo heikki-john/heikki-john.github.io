@@ -95,6 +95,7 @@ tbody td{padding:9px 13px;vertical-align:middle;}
 .status-pill.kadonnut{background:var(--red-light);color:var(--red);}
 .status-pill.oma{background:var(--surface2);color:var(--text3);}
 .status-pill.vapaa{background:var(--accent-light);color:var(--accent);}
+.status-pill.ei-kaytossa{background:var(--surface2);color:var(--text3);}
 .sdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
 .actions-cell{display:flex;gap:5px;flex-wrap:wrap;}
 .empty-state{padding:50px 20px;text-align:center;color:var(--text3);}
@@ -281,13 +282,13 @@ textarea{resize:vertical;min-height:56px;}
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="cdark"></span> Tumma paita</div>
           <div class="form-group"><label>Omistus</label><select id="fDarkOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus"><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
+          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
           <div id="fDarkOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fDarkOmaDate"></div></div>
         </div>
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="clight"></span> Vaalea paita</div>
           <div class="form-group"><label>Omistus</label><select id="fLightOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus"><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
+          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
           <div id="fLightOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fLightOmaDate"></div></div>
         </div>
       </div>
@@ -459,8 +460,8 @@ async function loadHistory(pid){
 // ── RENDER ────────────────────────────────────
 function getStatus(p){
   const st=[];
-  if(p.dark.own==='seura')st.push(p.dark.status);
-  if(p.light.own==='seura')st.push(p.light.status);
+  if(p.dark.own==='seura'&&p.dark.status!=='ei-kaytossa')st.push(p.dark.status);
+  if(p.light.own==='seura'&&p.light.status!=='ei-kaytossa')st.push(p.light.status);
   if(st.includes('kadonnut'))return'kadonnut';
   if(st.includes('lainassa'))return'lainassa';
   if(st.length&&st.every(s=>s==='palautettu'))return'palautettu';
@@ -469,6 +470,7 @@ function getStatus(p){
 }
 function pill(j){
   if(j.own==='oma')return'<span class="status-pill oma"><span class="sdot"></span>Oma</span>';
+  if(j.status==='ei-kaytossa')return'<span class="status-pill ei-kaytossa">–</span>';
   const lbl={lainassa:'Lainassa',palautettu:'Palautettu',kadonnut:'Kadonnut',vapaa:'Vapaa'};
   return`<span class="status-pill ${j.status}"><span class="sdot"></span>${lbl[j.status]||j.status}</span>`;
 }
@@ -610,11 +612,11 @@ function openEditModal(id){
   document.getElementById('fNum').value=p.num;document.getElementById('fSize').value=p.size;
   document.getElementById('fName').value=p.name;document.getElementById('fNotes').value=p.notes;
   document.getElementById('fDarkOwn').value=p.dark.own;
-  document.getElementById('fDarkStatus').value=p.dark.status==='oma'?'vapaa':p.dark.status;
+  document.getElementById('fDarkStatus').value=(p.dark.status==='oma')?'vapaa':p.dark.status;
   document.getElementById('fDarkDate').value=p.dark.date||'';
   document.getElementById('fDarkOmaDate').value=p.dark.oma_date||'';
   document.getElementById('fLightOwn').value=p.light.own;
-  document.getElementById('fLightStatus').value=p.light.status==='oma'?'vapaa':p.light.status;
+  document.getElementById('fLightStatus').value=(p.light.status==='oma')?'vapaa':p.light.status;
   document.getElementById('fLightDate').value=p.light.date||'';
   document.getElementById('fLightOmaDate').value=p.light.oma_date||'';
   updateOwnFields();openModal('editModal');

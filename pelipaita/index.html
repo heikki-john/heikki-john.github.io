@@ -238,6 +238,8 @@ textarea{resize:vertical;min-height:56px;}
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
     Loki
   </button>
+  <button class="btn btn-secondary" onclick="openOmaModal()">👕 Omat paidat</button>
+  <button class="btn btn-secondary" onclick="openFreeNumsModal()">🔢 Vapaat numerot</button>
   <button class="btn btn-primary" onclick="openAddModal()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Lisää paita
@@ -345,6 +347,22 @@ textarea{resize:vertical;min-height:56px;}
       <div class="login-error" id="settingsError" style="margin-top:10px"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('settingsModal')">Peruuta</button><button class="btn btn-primary" onclick="changePassword()">Vaihda salasana</button></div>
+  </div>
+</div>
+
+<!-- OMA PAIDAT MODAL -->
+<div class="modal-overlay" id="omaModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header"><span class="modal-title">👕 Omat paidat</span><button class="modal-close" onclick="closeModal('omaModal')">×</button></div>
+    <div class="modal-body" style="padding:0"><div id="omaContent"></div></div>
+  </div>
+</div>
+
+<!-- VAPAAT NUMEROT MODAL -->
+<div class="modal-overlay" id="freeNumsModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header"><span class="modal-title">🔢 Vapaat numerot (1–99)</span><button class="modal-close" onclick="closeModal('freeNumsModal')">×</button></div>
+    <div class="modal-body"><div id="freeNumsContent"></div></div>
   </div>
 </div>
 
@@ -484,7 +502,7 @@ function pill(j){
   return`<span class="status-pill ${j.status}"><span class="sdot"></span>${lbl[j.status]||j.status}</span>`;
 }
 function canReturn(p){return(p.dark.own==='seura'&&['lainassa','kadonnut'].includes(p.dark.status))||(p.light.own==='seura'&&['lainassa','kadonnut'].includes(p.light.status));}
-function canReloan(p){return(p.dark.own==='seura'&&['palautettu','vapaa'].includes(p.dark.status))||(p.light.own==='seura'&&['palautettu','vapaa'].includes(p.light.status))||p.dark.own==='oma'||p.light.own==='oma';}
+function canReloan(p){return(p.dark.own==='seura'&&['palautettu','vapaa'].includes(p.dark.status))||(p.light.own==='seura'&&['palautettu','vapaa'].includes(p.light.status));}
 
 function renderTable(){
   const q=document.getElementById('searchInput').value.toLowerCase();
@@ -799,33 +817,22 @@ function openReloanModal(id){
   const p=data.find(x=>x.id===id);if(!p)return;
   actionTarget=id;document.getElementById('actionModalTitle').textContent='Lainaa: '+(p.name||'#'+p.num);
   const today=new Date().toISOString().slice(0,10);
-  const seuраItems=[],omaItems=[];
-  if(p.dark.own==='seura'&&['palautettu','vapaa'].includes(p.dark.status))seuраItems.push({k:'dark',lbl:'🟫 Tumma paita',st:p.dark.status});
-  if(p.light.own==='seura'&&['palautettu','vapaa'].includes(p.light.status))seuраItems.push({k:'light',lbl:'⬜ Vaalea paita',st:p.light.status});
-  if(p.dark.own==='oma')omaItems.push({k:'dark',lbl:'🟫 Tumma paita (oma)'});
-  if(p.light.own==='oma')omaItems.push({k:'light',lbl:'⬜ Vaalea paita (oma)'});
+  const items=[];
+  if(p.dark.own==='seura'&&['palautettu','vapaa'].includes(p.dark.status))items.push({k:'dark',lbl:'🟫 Tumma paita',st:p.dark.status});
+  if(p.light.own==='seura'&&['palautettu','vapaa'].includes(p.light.status))items.push({k:'light',lbl:'⬜ Vaalea paita',st:p.light.status});
   const stLbl={palautettu:'Palautettu',vapaa:'Vapaa'};
   let html='';
-  if(seuраItems.length){
-    html+='<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Seuran paidat</div>';
-    html+=seuраItems.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem;background:var(--surface)"><input type="checkbox" name="rl" value="${it.k}" checked style="flex-shrink:0">${it.lbl}<span style="margin-left:auto;font-size:.72rem;color:var(--green);font-weight:600">${stLbl[it.st]||it.st}</span></label>`).join('');
-  }
-  if(omaItems.length){
-    html+='<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:'+(seuраItems.length?'12px':'0')+'px 0 8px">Omat paidat</div>';
-    html+=omaItems.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem;background:var(--surface2)"><input type="checkbox" name="rl_oma" value="${it.k}" style="flex-shrink:0">${it.lbl}<span style="margin-left:auto;font-size:.72rem;color:var(--text3);font-weight:600">Oma</span></label>`).join('');
-  }
+  html+=items.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem;background:var(--surface)"><input type="checkbox" name="rl" value="${it.k}" checked style="flex-shrink:0">${it.lbl}<span style="margin-left:auto;font-size:.72rem;color:var(--green);font-weight:600">${stLbl[it.st]||it.st}</span></label>`).join('');
   html+=`<div class="form-group" style="margin-top:12px"><label>Lainauspäivä</label><input type="date" id="reloanDate" value="${today}"></div>`;
   document.getElementById('actionModalContent').innerHTML=html;
   document.getElementById('actionConfirmBtn').onclick=doReloanAction;openModal('actionModal');
 }
 async function doReloanAction(){
   const checks=[...document.querySelectorAll('input[name="rl"]:checked')].map(c=>c.value);
-  const omaChecks=[...document.querySelectorAll('input[name="rl_oma"]:checked')].map(c=>c.value);
-  if(!checks.length&&!omaChecks.length){showToast('Valitse vähintään yksi',true);return;}
+  if(!checks.length){showToast('Valitse vähintään yksi',true);return;}
   const date=document.getElementById('reloanDate').value;
   const p=data.find(x=>x.id===actionTarget);const before=JSON.parse(JSON.stringify(p));
   checks.forEach(k=>{p[k].status='lainassa';p[k].date=date;});
-  omaChecks.forEach(k=>{p[k].oma_date=date;}); // oma: just update date, status stays 'oma'
   setLoading(true);
   try{await updatePlayer(p);await addLog('Lainattu uudelleen',p.id,p.name,before,p);showToast('Lainattu ✓');closeModal('actionModal');await loadData();}
   catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
@@ -908,6 +915,43 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
 // ── INIT ──────────────────────────────────────
+function openOmaModal(){
+  openModal('omaModal');
+  const oma=[];
+  data.forEach(p=>{
+    if(p.dark.own==='oma')oma.push({player:p.name||'#'+p.num,num:p.num,size:p.size,label:'🟫 Tumma',date:p.dark.oma_date});
+    if(p.light.own==='oma')oma.push({player:p.name||'#'+p.num,num:p.num,size:p.size,label:'⬜ Vaalea',date:p.light.oma_date});
+  });
+  if(!oma.length){document.getElementById('omaContent').innerHTML='<div class="empty-state"><div class="icon">👕</div><div>Ei omia paitoja</div></div>';return;}
+  oma.sort((a,b)=>(parseInt(a.num)||999)-(parseInt(b.num)||999));
+  const thStyle='padding:9px 14px;text-align:left;font-size:.69rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)';
+  const rows=oma.map((r,i)=>`<tr style="border-bottom:1px solid var(--border);${i%2?'background:var(--surface2)':''}">
+    <td style="padding:9px 14px;font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">${r.num||'–'}</td>
+    <td style="padding:9px 14px;font-weight:600">${r.player}</td>
+    <td style="padding:9px 14px"><span style="font-family:'DM Mono',monospace;font-size:.75rem;background:var(--surface2);padding:2px 7px;border-radius:4px">${r.size||'–'}</span></td>
+    <td style="padding:9px 14px">${r.label}</td>
+    <td style="padding:9px 14px;font-family:'DM Mono',monospace;font-size:.8rem;color:var(--text2)">${r.date?fmtDate(r.date):'–'}</td>
+  </tr>`).join('');
+  document.getElementById('omaContent').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+      <th style="${thStyle}">Nro</th><th style="${thStyle}">Pelaaja</th>
+      <th style="${thStyle}">Koko</th><th style="${thStyle}">Väri</th><th style="${thStyle}">Hankintapvm</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+function openFreeNumsModal(){
+  openModal('freeNumsModal');
+  const used=new Set(data.map(p=>parseInt(p.num)).filter(n=>n>=1&&n<=99));
+  const free=[];
+  for(let i=1;i<=99;i++){if(!used.has(i))free.push(i);}
+  const el=document.getElementById('freeNumsContent');
+  if(!free.length){el.innerHTML='<div class="empty-state"><div>Kaikki numerot 1–99 käytössä!</div></div>';return;}
+  const chips=free.map(n=>`<span onclick="prefillNum(${n})" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-family:'DM Mono',monospace;font-size:.85rem;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--accent-light)';this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='var(--surface2)';this.style.color='var(--text2)';this.style.borderColor='var(--border)'">${n}</span>`).join('');
+  el.innerHTML=`<p style="font-size:.82rem;color:var(--text2);margin-bottom:14px">Käytössä: <strong>${used.size}</strong> / 99 · Vapaana: <strong>${free.length}</strong></p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">${chips}</div>
+    <p style="font-size:.75rem;color:var(--text3);margin-top:12px">💡 Klikkaa numeroa → avaa lisäyslomake esitäytettynä</p>`;
+}
+function prefillNum(n){closeModal('freeNumsModal');openAddModal();document.getElementById('fNum').value=n;autoFillFromNum(String(n));}
+
 if(sessionStorage.getItem(SESSION_KEY)){loadData();}
 </script>
 </body>

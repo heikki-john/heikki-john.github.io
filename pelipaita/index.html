@@ -273,7 +273,7 @@ textarea{resize:vertical;min-height:56px;}
     <div class="modal-header"><span class="modal-title" id="editModalTitle">Lisää pelaaja</span><button class="modal-close" onclick="closeModal('editModal')">×</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label>Pelinumero</label><input type="text" id="fNum" placeholder="esim. 10" maxlength="4"></div>
+        <div class="form-group"><label>Pelinumero</label><input type="text" id="fNum" placeholder="esim. 10" maxlength="4" oninput="autoFillFromNum(this.value)"></div>
         <div class="form-group"><label>Koko</label><select id="fSize"><option value="">– valitse –</option><option>140</option><option>150</option><option>160</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></div>
         <div class="form-group full"><label>Pelaajan nimi</label><input type="text" id="fName" placeholder="Etunimi Sukunimi"></div>
       </div>
@@ -282,13 +282,13 @@ textarea{resize:vertical;min-height:56px;}
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="cdark"></span> Tumma paita</div>
           <div class="form-group"><label>Omistus</label><select id="fDarkOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
+          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus" onchange="updateOwnFields()"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fDarkDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
           <div id="fDarkOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fDarkOmaDate"></div></div>
         </div>
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="clight"></span> Vaalea paita</div>
           <div class="form-group"><label>Omistus</label><select id="fLightOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
+          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus" onchange="updateOwnFields()"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fLightDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
           <div id="fLightOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fLightOmaDate"></div></div>
         </div>
       </div>
@@ -621,13 +621,31 @@ function openEditModal(id){
   document.getElementById('fLightOmaDate').value=p.light.oma_date||'';
   updateOwnFields();openModal('editModal');
 }
+function autoFillFromNum(val){
+  // Only auto-fill when adding new, not editing
+  if(editingId!==null)return;
+  const v=val.trim();
+  if(!v)return;
+  // Find existing jersey with same number to pre-fill size
+  const match=data.find(p=>p.num===v);
+  if(match&&match.size){
+    document.getElementById('fSize').value=match.size;
+  }
+}
 function updateOwnFields(){
   const dOma=document.getElementById('fDarkOwn').value==='oma';
   const lOma=document.getElementById('fLightOwn').value==='oma';
+  const dEi=!dOma&&document.getElementById('fDarkStatus').value==='ei-kaytossa';
+  const lEi=!lOma&&document.getElementById('fLightStatus').value==='ei-kaytossa';
   document.getElementById('fDarkLoanFields').style.display=dOma?'none':'';
   document.getElementById('fDarkOmaFields').style.display=dOma?'':'none';
   document.getElementById('fLightLoanFields').style.display=lOma?'none':'';
   document.getElementById('fLightOmaFields').style.display=lOma?'':'none';
+  // Hide date when ei-kaytossa
+  const ddf=document.getElementById('fDarkDateField');
+  const ldf=document.getElementById('fLightDateField');
+  if(ddf)ddf.style.display=dEi?'none':'';
+  if(ldf)ldf.style.display=lEi?'none':'';
 }
 async function saveEntry(){
   const num=document.getElementById('fNum').value.trim();

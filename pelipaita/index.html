@@ -144,12 +144,48 @@ textarea{resize:vertical;min-height:56px;}
 .snapshot-key{color:var(--text3);min-width:110px;font-size:.75rem;}
 .snapshot-val{font-weight:500;}
 
-@media(max-width:900px){
-  .main{padding:12px;}.toolbar{padding:10px 12px;}header{padding:0 12px;}
-  .stats-chips{display:none;}table{font-size:.79rem;}tbody td,thead th{padding:7px 9px;}
-  .form-grid{grid-template-columns:1fr;}.jersey-config{grid-template-columns:1fr;}
+.hide-mobile{display:inline;}
+.show-mobile{display:none;}
+/* ── MOBILE CARD VIEW ── */
+.card-list{display:none;flex-direction:column;gap:10px;padding:12px;}
+.player-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);}
+.player-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);}
+.player-card-header input[type=checkbox]{flex-shrink:0;}
+.player-card-num{font-family:'DM Mono',monospace;font-weight:700;font-size:1.1rem;color:var(--accent);min-width:28px;}
+.player-card-name{font-weight:700;font-size:.95rem;flex:1;}
+.player-card-size{font-family:'DM Mono',monospace;font-size:.72rem;font-weight:600;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--text2);}
+.player-card-body{padding:10px 14px;}
+.player-card-jerseys{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.jersey-mini{background:var(--surface2);border-radius:var(--rs);padding:8px 10px;}
+.jersey-mini-title{font-size:.68rem;font-weight:700;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;}
+.player-card-date{font-size:.75rem;color:var(--text2);font-family:'DM Mono',monospace;margin-bottom:10px;}
+.player-card-notes{font-size:.75rem;color:var(--text3);margin-bottom:10px;font-style:italic;}
+.player-card-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+@media(max-width:768px){
+  .main{padding:8px 0;background:transparent;}
+  .table-wrap{display:none;}
+  .card-list{display:flex;}
+  .toolbar{padding:10px 12px;gap:8px;flex-wrap:wrap;}
+  .search-box{min-width:0;width:100%;flex:none;}
+  .filter-group{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;}
+  .filter-btn{white-space:nowrap;flex-shrink:0;}
+  header{padding:0 12px;gap:8px;}
+  .hide-mobile{display:none!important;}
+  .show-mobile{display:inline!important;}
+  header h1{font-size:.95rem;}
+  .stats-chips{display:none;}
+  .logout-btn{padding:4px 8px;font-size:.72rem;}
+  .modal{border-radius:0;max-height:100vh;height:100%;max-width:100%!important;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;}
+  .modal-overlay{align-items:flex-end;padding:0;}
+  .form-grid{grid-template-columns:1fr;}
+  .jersey-config{grid-template-columns:1fr;}
+  .bulk-bar{flex-wrap:wrap;gap:6px;padding:8px 12px;}
+  .bulk-bar .btn{font-size:.72rem;padding:4px 8px;}
 }
-@media(max-width:600px){.actions-cell{flex-direction:column;}}
+@media(max-width:400px){
+  .player-card-jerseys{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
@@ -182,8 +218,8 @@ textarea{resize:vertical;min-height:56px;}
   <div class="spacer"></div>
   <div class="stats-chips" id="statsChips"></div>
   <div class="db-dot loading" id="dbDot" title="Yhdistetään…"></div>
-  <button class="btn btn-secondary btn-sm" onclick="openSettingsModal()">⚙️ Asetukset</button>
-  <button class="logout-btn" onclick="doLogout()">Kirjaudu ulos</button>
+  <button class="btn btn-secondary btn-sm" onclick="openSettingsModal()" title="Asetukset"><span class="hide-mobile">⚙️ Asetukset</span><span class="show-mobile">⚙️</span></button>
+  <button class="logout-btn" onclick="doLogout()" title="Kirjaudu ulos"><span class="hide-mobile">Kirjaudu ulos</span><span class="show-mobile">↩</span></button>
 </header>
 
 <div class="toolbar">
@@ -227,6 +263,7 @@ textarea{resize:vertical;min-height:56px;}
       <tbody id="tableBody"><tr><td colspan="8"><div class="empty-state"><div>Ladataan…</div></div></td></tr></tbody>
     </table>
   </div>
+  <div class="card-list" id="cardList"></div>
 </div>
 
 <!-- ADD/EDIT -->
@@ -467,6 +504,48 @@ function renderTable(){
     </tr>`;
   }).join('');
   updateStats();updateBulkBar();
+  renderCards(rows);
+}
+function renderCards(rows){
+  const cardList=document.getElementById('cardList');
+  if(!cardList)return;
+  if(!rows||!rows.length){cardList.innerHTML='<div class="empty-state"><div class="icon">🏅</div><div>Ei tuloksia</div></div>';return;}
+  cardList.innerHTML=rows.map(p=>{
+    const dd=p.dark.date?fmtDate(p.dark.date):(p.dark.oma_date?fmtDate(p.dark.oma_date):'');
+    const ld=p.light.date?fmtDate(p.light.date):(p.light.oma_date?fmtDate(p.light.oma_date):'');
+    const dateShow=dd||ld;
+    return`<div class="player-card">
+      <div class="player-card-header">
+        <input type="checkbox" ${selectedIds.has(p.id)?'checked':''} onchange="toggleSelect('${p.id}',this.checked)">
+        <span class="player-card-num">${p.num||'–'}</span>
+        <span class="player-card-name">${p.name||'<span style="color:var(--text3);font-weight:400">–</span>'}</span>
+        <span class="player-card-size">${p.size||'–'}</span>
+      </div>
+      <div class="player-card-body">
+        <div class="player-card-jerseys">
+          <div class="jersey-mini">
+            <div class="jersey-mini-title">🟫 Tumma</div>
+            ${pill(p.dark)}
+            ${p.dark.own==='seura'&&p.dark.date?`<div style="font-size:.7rem;color:var(--text3);margin-top:4px">${fmtDate(p.dark.date)}</div>`:''}
+            ${p.dark.own==='oma'&&p.dark.oma_date?`<div style="font-size:.7rem;color:var(--text3);margin-top:4px">${fmtDate(p.dark.oma_date)}</div>`:''}
+          </div>
+          <div class="jersey-mini">
+            <div class="jersey-mini-title">⬜ Vaalea</div>
+            ${pill(p.light)}
+            ${p.light.own==='seura'&&p.light.date?`<div style="font-size:.7rem;color:var(--text3);margin-top:4px">${fmtDate(p.light.date)}</div>`:''}
+            ${p.light.own==='oma'&&p.light.oma_date?`<div style="font-size:.7rem;color:var(--text3);margin-top:4px">${fmtDate(p.light.oma_date)}</div>`:''}
+          </div>
+        </div>
+        ${p.notes?`<div class="player-card-notes">${p.notes}</div>`:''}
+        <div class="player-card-actions">
+          <button class="btn btn-sm btn-secondary" onclick="openEditModal('${p.id}')">✏️ Muokkaa</button>
+          <button class="btn btn-sm btn-secondary" onclick="openHistory('${p.id}')">📋 Historia</button>
+          ${canReturn(p)?`<button class="btn btn-sm btn-success" onclick="openReturnModal('${p.id}')">↩ Palauta</button>`:''}
+          ${canReloan(p)?`<button class="btn btn-sm btn-warning" onclick="openReloanModal('${p.id}')">→ Lainaa</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 function updateStats(){
   let l=0,p=0,k=0,v=0;

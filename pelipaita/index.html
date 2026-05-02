@@ -231,9 +231,8 @@ textarea{resize:vertical;min-height:56px;}
   <div class="filter-group">
     <button class="filter-btn active" onclick="setFilter('kaikki',this)">Kaikki</button>
     <button class="filter-btn" onclick="setFilter('lainassa',this)">Lainassa</button>
-    <button class="filter-btn" onclick="setFilter('palautettu',this)">Palautettu</button>
+    <button class="filter-btn" onclick="setFilter('vapaa',this)">Vapaat / palautettu</button>
     <button class="filter-btn" onclick="setFilter('kadonnut',this)">Kadonneet</button>
-    <button class="filter-btn" onclick="setFilter('vapaa',this)">Vapaat</button>
   </div>
   <button class="btn btn-secondary" onclick="openLogModal()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -251,6 +250,16 @@ textarea{resize:vertical;min-height:56px;}
   <button class="btn btn-sm btn-warning" onclick="bulkAction('lainaa')">→ Lainaa uudelleen</button>
   <button class="btn btn-sm btn-danger" onclick="bulkAction('kadonnut')">! Kadonnut</button>
   <button class="btn btn-sm btn-secondary" onclick="clearSelection()">✕ Poista valinta</button>
+</div>
+
+<div id="infoBar" style="display:none;padding:8px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:.8rem;">
+  <span style="font-weight:700;color:var(--text2)">📊 Paidat:</span>
+  <span id="infoTotal"></span>
+  <span id="infoLainassa"></span>
+  <span id="infoVapaa"></span>
+  <span id="infoPalautettu"></span>
+  <span id="infoKadonnut"></span>
+  <span id="infoOma"></span>
 </div>
 
 <div class="main">
@@ -464,8 +473,8 @@ function getStatus(p){
   if(p.light.own==='seura'&&p.light.status!=='ei-kaytossa')st.push(p.light.status);
   if(st.includes('kadonnut'))return'kadonnut';
   if(st.includes('lainassa'))return'lainassa';
-  if(st.length&&st.every(s=>s==='palautettu'))return'palautettu';
-  if(st.length&&st.every(s=>s==='vapaa'))return'vapaa';
+  // palautettu = vapaa for filtering purposes
+  if(st.length&&st.every(s=>s==='palautettu'||s==='vapaa'))return'vapaa';
   return'oma';
 }
 function pill(j){
@@ -475,7 +484,7 @@ function pill(j){
   return`<span class="status-pill ${j.status}"><span class="sdot"></span>${lbl[j.status]||j.status}</span>`;
 }
 function canReturn(p){return(p.dark.own==='seura'&&['lainassa','kadonnut'].includes(p.dark.status))||(p.light.own==='seura'&&['lainassa','kadonnut'].includes(p.light.status));}
-function canReloan(p){return(p.dark.own==='seura'&&p.dark.status==='palautettu')||(p.light.own==='seura'&&p.light.status==='palautettu');}
+function canReloan(p){return(p.dark.own==='seura'&&['palautettu','vapaa'].includes(p.dark.status))||(p.light.own==='seura'&&['palautettu','vapaa'].includes(p.light.status))||p.dark.own==='oma'||p.light.own==='oma';}
 
 function renderTable(){
   const q=document.getElementById('searchInput').value.toLowerCase();
@@ -550,9 +559,38 @@ function renderCards(rows){
   }).join('');
 }
 function updateStats(){
-  let l=0,p=0,k=0,v=0;
-  data.forEach(x=>{const s=getStatus(x);if(s==='lainassa')l++;else if(s==='palautettu')p++;else if(s==='kadonnut')k++;else if(s==='vapaa')v++;});
-  document.getElementById('statsChips').innerHTML=`<span class="chip blue">🟡 ${l} lainassa</span><span class="chip green">✓ ${p} palautettu</span><span class="chip red">! ${k} kadonnut</span>`;
+  let lainassa=0,vapaa=0,palautettu=0,kadonnut=0,oma=0,total=0;
+  data.forEach(p=>{
+    ['dark','light'].forEach(c=>{
+      const j=p[c];
+      if(j.own==='oma'){oma++;total++;}
+      else if(j.status==='lainassa'){lainassa++;total++;}
+      else if(j.status==='vapaa'){vapaa++;total++;}
+      else if(j.status==='palautettu'){palautettu++;total++;}
+      else if(j.status==='kadonnut'){kadonnut++;total++;}
+      // ei-kaytossa not counted
+    });
+  });
+  const free=vapaa+palautettu;
+  // Info bar
+  const ib=document.getElementById('infoBar');
+  if(ib){
+    ib.style.display='flex';
+    const mk=(v,lbl,col)=>v?`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-weight:600;background:${col.bg};color:${col.fg}">${lbl}: <strong>${v}</strong></span>`:'';
+    document.getElementById('infoTotal').innerHTML=mk(total,'Yhteensä',{bg:'var(--surface2)',fg:'var(--text2)'});
+    document.getElementById('infoLainassa').innerHTML=mk(lainassa,'Lainassa',{bg:'var(--yellow-light)',fg:'var(--yellow)'});
+    document.getElementById('infoVapaa').innerHTML=mk(vapaa,'Varastossa',{bg:'var(--accent-light)',fg:'var(--accent)'});
+    document.getElementById('infoPalautettu').innerHTML=mk(palautettu,'Palautettu',{bg:'var(--green-light)',fg:'var(--green)'});
+    document.getElementById('infoKadonnut').innerHTML=mk(kadonnut,'Kadonnut',{bg:'var(--red-light)',fg:'var(--red)'});
+    document.getElementById('infoOma').innerHTML=mk(oma,'Omia',{bg:'var(--surface2)',fg:'var(--text3)'});
+  }
+  document.getElementById('statsChips').innerHTML=
+    `<span class="chip" style="background:var(--surface2);color:var(--text2)">Paitoja: ${total}</span>`+
+    `<span class="chip blue">🟡 Lainassa: ${lainassa}</span>`+
+    `<span class="chip green">✓ Vapaat: ${free}</span>`+
+    (palautettu?`<span class="chip green" style="opacity:.7">↩ Palautettu: ${palautettu}</span>`:'')+
+    (kadonnut?`<span class="chip red">! Kadonneet: ${kadonnut}</span>`:'')+
+    (oma?`<span class="chip" style="background:var(--surface2);color:var(--text3)">Omia: ${oma}</span>`:'');
 }
 function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTable();}
 
@@ -760,20 +798,35 @@ async function doReturnAction(){
 function openReloanModal(id){
   const p=data.find(x=>x.id===id);if(!p)return;
   actionTarget=id;document.getElementById('actionModalTitle').textContent='Lainaa: '+(p.name||'#'+p.num);
-  const today=new Date().toISOString().slice(0,10),items=[];
-  if(p.dark.own==='seura'&&p.dark.status==='palautettu')items.push('dark');
-  if(p.light.own==='seura'&&p.light.status==='palautettu')items.push('light');
-  document.getElementById('actionModalContent').innerHTML='<p style="margin-bottom:12px;font-size:.875rem;color:var(--text2)">Lainattavat paidat:</p>'+
-    items.map(k=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem"><input type="checkbox" name="rl" value="${k}" checked style="flex-shrink:0">${k==='dark'?'🟫 Tumma':'⬜ Vaalea'} paita</label>`).join('')+
-    `<div class="form-group" style="margin-top:12px"><label>Lainauspäivä</label><input type="date" id="reloanDate" value="${today}"></div>`;
+  const today=new Date().toISOString().slice(0,10);
+  const seuраItems=[],omaItems=[];
+  if(p.dark.own==='seura'&&['palautettu','vapaa'].includes(p.dark.status))seuраItems.push({k:'dark',lbl:'🟫 Tumma paita',st:p.dark.status});
+  if(p.light.own==='seura'&&['palautettu','vapaa'].includes(p.light.status))seuраItems.push({k:'light',lbl:'⬜ Vaalea paita',st:p.light.status});
+  if(p.dark.own==='oma')omaItems.push({k:'dark',lbl:'🟫 Tumma paita (oma)'});
+  if(p.light.own==='oma')omaItems.push({k:'light',lbl:'⬜ Vaalea paita (oma)'});
+  const stLbl={palautettu:'Palautettu',vapaa:'Vapaa'};
+  let html='';
+  if(seuраItems.length){
+    html+='<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Seuran paidat</div>';
+    html+=seuраItems.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem;background:var(--surface)"><input type="checkbox" name="rl" value="${it.k}" checked style="flex-shrink:0">${it.lbl}<span style="margin-left:auto;font-size:.72rem;color:var(--green);font-weight:600">${stLbl[it.st]||it.st}</span></label>`).join('');
+  }
+  if(omaItems.length){
+    html+='<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:'+(seuраItems.length?'12px':'0')+'px 0 8px">Omat paidat</div>';
+    html+=omaItems.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem;background:var(--surface2)"><input type="checkbox" name="rl_oma" value="${it.k}" style="flex-shrink:0">${it.lbl}<span style="margin-left:auto;font-size:.72rem;color:var(--text3);font-weight:600">Oma</span></label>`).join('');
+  }
+  html+=`<div class="form-group" style="margin-top:12px"><label>Lainauspäivä</label><input type="date" id="reloanDate" value="${today}"></div>`;
+  document.getElementById('actionModalContent').innerHTML=html;
   document.getElementById('actionConfirmBtn').onclick=doReloanAction;openModal('actionModal');
 }
 async function doReloanAction(){
   const checks=[...document.querySelectorAll('input[name="rl"]:checked')].map(c=>c.value);
-  if(!checks.length){showToast('Valitse vähintään yksi',true);return;}
+  const omaChecks=[...document.querySelectorAll('input[name="rl_oma"]:checked')].map(c=>c.value);
+  if(!checks.length&&!omaChecks.length){showToast('Valitse vähintään yksi',true);return;}
   const date=document.getElementById('reloanDate').value;
   const p=data.find(x=>x.id===actionTarget);const before=JSON.parse(JSON.stringify(p));
-  checks.forEach(k=>{p[k].status='lainassa';p[k].date=date;});setLoading(true);
+  checks.forEach(k=>{p[k].status='lainassa';p[k].date=date;});
+  omaChecks.forEach(k=>{p[k].oma_date=date;}); // oma: just update date, status stays 'oma'
+  setLoading(true);
   try{await updatePlayer(p);await addLog('Lainattu uudelleen',p.id,p.name,before,p);showToast('Lainattu ✓');closeModal('actionModal');await loadData();}
   catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
 }

@@ -307,14 +307,14 @@ textarea{resize:vertical;min-height:56px;}
       <div class="jersey-config">
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="cdark"></span> Tumma paita</div>
-          <div class="form-group"><label>Omistus</label><select id="fDarkOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus" onchange="updateOwnFields()"><option value="ei-olemassa">Ei olemassa</option><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fDarkDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
+          <div class="form-group"><label>Omistus</label><select id="fDarkOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option><option value="ei-olemassa">Ei olemassa</option></select></div>
+          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus" onchange="updateOwnFields()"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fDarkDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
           <div id="fDarkOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fDarkOmaDate"></div></div>
         </div>
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="clight"></span> Vaalea paita</div>
-          <div class="form-group"><label>Omistus</label><select id="fLightOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus" onchange="updateOwnFields()"><option value="ei-olemassa">Ei olemassa</option><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fLightDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
+          <div class="form-group"><label>Omistus</label><select id="fLightOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option><option value="ei-olemassa">Ei olemassa</option></select></div>
+          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus" onchange="updateOwnFields()"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fLightDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
           <div id="fLightOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fLightOmaDate"></div></div>
         </div>
       </div>
@@ -486,8 +486,8 @@ async function loadHistory(pid){
 // ── RENDER ────────────────────────────────────
 function getStatus(p){
   const st=[];
-  if(p.dark.own==='seura'&&!['ei-kaytossa','ei-olemassa'].includes(p.dark.status))st.push(p.dark.status);
-  if(p.light.own==='seura'&&!['ei-kaytossa','ei-olemassa'].includes(p.light.status))st.push(p.light.status);
+  if(p.dark.own==='seura'&&p.dark.status!=='ei-kaytossa')st.push(p.dark.status);
+  if(p.light.own==='seura'&&p.light.status!=='ei-kaytossa')st.push(p.light.status);
   if(st.includes('kadonnut'))return'kadonnut';
   if(st.includes('lainassa'))return'lainassa';
   // palautettu = vapaa for filtering purposes
@@ -497,7 +497,7 @@ function getStatus(p){
 function pill(j){
   if(j.own==='oma')return'<span class="status-pill oma"><span class="sdot"></span>Oma</span>';
   if(j.status==='ei-kaytossa')return'<span class="status-pill ei-kaytossa">–</span>';
-  if(j.status==='ei-olemassa')return'';
+  if(j.own==='ei-olemassa')return'';
   const lbl={lainassa:'Lainassa',palautettu:'Palautettu',kadonnut:'Kadonnut',vapaa:'Vapaa'};
   return`<span class="status-pill ${j.status}"><span class="sdot"></span>${lbl[j.status]||j.status}</span>`;
 }
@@ -595,7 +595,7 @@ function updateStats(){
   data.forEach(p=>{
     ['dark','light'].forEach(c=>{
       const j=p[c];
-      if(j.status==='ei-olemassa')return;
+      if(j.own==='ei-olemassa')return;
       if(j.own==='oma'){oma++;total++;}
       else if(j.status==='lainassa'){lainassa++;total++;}
       else if(j.status==='vapaa'){vapaa++;total++;}
@@ -682,11 +682,11 @@ function openEditModal(id){
   editingId=id;document.getElementById('editModalTitle').textContent='Muokkaa: '+(p.name||'#'+p.num);
   document.getElementById('fNum').value=p.num;document.getElementById('fSize').value=p.size;
   document.getElementById('fName').value=p.name;document.getElementById('fNotes').value=p.notes;
-  document.getElementById('fDarkOwn').value=p.dark.own;
+  document.getElementById('fDarkOwn').value=p.dark.own==='ei-olemassa'||p.dark.status==='ei-olemassa'?'ei-olemassa':p.dark.own;
   document.getElementById('fDarkStatus').value=(p.dark.status==='oma')?'vapaa':p.dark.status;
   document.getElementById('fDarkDate').value=p.dark.date||'';
   document.getElementById('fDarkOmaDate').value=p.dark.oma_date||'';
-  document.getElementById('fLightOwn').value=p.light.own;
+  document.getElementById('fLightOwn').value=p.light.own==='ei-olemassa'||p.light.status==='ei-olemassa'?'ei-olemassa':p.light.own;
   document.getElementById('fLightStatus').value=(p.light.status==='oma')?'vapaa':p.light.status;
   document.getElementById('fLightDate').value=p.light.date||'';
   document.getElementById('fLightOmaDate').value=p.light.oma_date||'';
@@ -704,15 +704,18 @@ function autoFillFromNum(val){
   }
 }
 function updateOwnFields(){
-  const dOma=document.getElementById('fDarkOwn').value==='oma';
-  const lOma=document.getElementById('fLightOwn').value==='oma';
-  const dEi=!dOma&&['ei-kaytossa','ei-olemassa'].includes(document.getElementById('fDarkStatus').value);
-  const lEi=!lOma&&['ei-kaytossa','ei-olemassa'].includes(document.getElementById('fLightStatus').value);
-  document.getElementById('fDarkLoanFields').style.display=dOma?'none':'';
+  const dVal=document.getElementById('fDarkOwn').value;
+  const lVal=document.getElementById('fLightOwn').value;
+  const dOma=dVal==='oma';
+  const lOma=lVal==='oma';
+  const dNone=dVal==='ei-olemassa';
+  const lNone=lVal==='ei-olemassa';
+  const dEi=!dOma&&!dNone&&['ei-kaytossa'].includes(document.getElementById('fDarkStatus').value);
+  const lEi=!lOma&&!lNone&&['ei-kaytossa'].includes(document.getElementById('fLightStatus').value);
+  document.getElementById('fDarkLoanFields').style.display=(dOma||dNone)?'none':'';
   document.getElementById('fDarkOmaFields').style.display=dOma?'':'none';
-  document.getElementById('fLightLoanFields').style.display=lOma?'none':'';
+  document.getElementById('fLightLoanFields').style.display=(lOma||lNone)?'none':'';
   document.getElementById('fLightOmaFields').style.display=lOma?'':'none';
-  // Hide date when ei-kaytossa
   const ddf=document.getElementById('fDarkDateField');
   const ldf=document.getElementById('fLightDateField');
   if(ddf)ddf.style.display=dEi?'none':'';
@@ -724,11 +727,11 @@ async function saveEntry(){
   const name=document.getElementById('fName').value.trim();
   if(!num&&!name){showToast('Anna numero tai nimi',true);return;}
   const dOwn=document.getElementById('fDarkOwn').value;
-  const dStatus=dOwn==='oma'?'oma':document.getElementById('fDarkStatus').value;
+  const dStatus=dOwn==='oma'?'oma':dOwn==='ei-olemassa'?'ei-olemassa':document.getElementById('fDarkStatus').value;
   const dDate=dOwn==='oma'?null:document.getElementById('fDarkDate').value||null;
   const dOmaDate=dOwn==='oma'?document.getElementById('fDarkOmaDate').value||null:null;
   const lOwn=document.getElementById('fLightOwn').value;
-  const lStatus=lOwn==='oma'?'oma':document.getElementById('fLightStatus').value;
+  const lStatus=lOwn==='oma'?'oma':lOwn==='ei-olemassa'?'ei-olemassa':document.getElementById('fLightStatus').value;
   const lDate=lOwn==='oma'?null:document.getElementById('fLightDate').value||null;
   const lOmaDate=lOwn==='oma'?document.getElementById('fLightOmaDate').value||null:null;
   const notes=document.getElementById('fNotes').value.trim();

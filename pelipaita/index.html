@@ -321,7 +321,7 @@ textarea{resize:vertical;min-height:56px;}
       <div class="section-label">Lisätiedot</div>
       <div class="form-group"><label>Huomiot</label><textarea id="fNotes" placeholder="Vapaa muistiinpano…" rows="2"></textarea></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editModal')">Peruuta</button><button class="btn btn-primary" onclick="saveEntry()" id="saveBtn">Tallenna</button></div>
+    <div class="modal-footer"><button class="btn btn-danger" id="deleteBtn" style="display:none;margin-right:auto" onclick="deleteEntry()">🗑 Poista</button><button class="btn btn-secondary" onclick="closeModal('editModal')">Peruuta</button><button class="btn btn-primary" onclick="saveEntry()" id="saveBtn">Tallenna</button></div>
   </div>
 </div>
 
@@ -344,16 +344,39 @@ textarea{resize:vertical;min-height:56px;}
 
 <!-- SETTINGS -->
 <div class="modal-overlay" id="settingsModal">
-  <div class="modal modal-sm">
+  <div class="modal" style="max-width:620px">
     <div class="modal-header"><span class="modal-title">⚙️ Asetukset</span><button class="modal-close" onclick="closeModal('settingsModal')">×</button></div>
     <div class="modal-body">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">Vaihda salasana</div>
+
+      <div class="section-label">Vaihda salasana</div>
       <div class="form-group"><label>Nykyinen salasana</label><input type="password" id="sCurrent" placeholder="••••••••"></div>
       <div class="form-group" style="margin-top:10px"><label>Uusi salasana</label><input type="password" id="sNew" placeholder="••••••••"></div>
       <div class="form-group" style="margin-top:10px"><label>Uusi salasana uudelleen</label><input type="password" id="sNew2" placeholder="••••••••"></div>
       <div class="login-error" id="settingsError" style="margin-top:10px"></div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="changePassword()">Vaihda salasana</button>
+
+      <div class="section-label" style="margin-top:24px">Vie / tuo data (CSV)</div>
+      <p style="font-size:.82rem;color:var(--text2);margin-bottom:12px">Vie kaikki paitatiedot CSV-tiedostona varmuuskopioksi tai tuo ne takaisin.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="exportCSV()">⬇ Vie CSV</button>
+        <label class="btn btn-secondary" style="cursor:pointer">⬆ Tuo CSV<input type="file" id="importFile" accept=".csv" style="display:none" onchange="importCSV(this)"></label>
+      </div>
+      <div id="importMsg" style="margin-top:8px;font-size:.8rem;display:none"></div>
+
+      <div class="section-label" style="margin-top:24px">Migraatio-komennot</div>
+      <p style="font-size:.82rem;color:var(--text2);margin-bottom:10px">Kopioi data toiseen tietokantaan. Luo ensin taulut kohdetietokannassa, aja sitten alla oleva komento.</p>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="filter-btn active" id="migTab_supabase" onclick="showMigTab('supabase')">Supabase → Supabase</button>
+        <button class="filter-btn" id="migTab_postgres" onclick="showMigTab('postgres')">PostgreSQL</button>
+        <button class="filter-btn" id="migTab_mysql" onclick="showMigTab('mysql')">MySQL</button>
+        <button class="filter-btn" id="migTab_sqlite" onclick="showMigTab('sqlite')">SQLite</button>
+        <button class="filter-btn" id="migTab_firebase" onclick="showMigTab('firebase')">Firebase</button>
+      </div>
+      <div id="migContent" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:12px;font-family:'DM Mono',monospace;font-size:.73rem;line-height:1.6;white-space:pre-wrap;max-height:220px;overflow-y:auto;color:var(--text)"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="copyMigration()">📋 Kopioi komennot</button>
+
     </div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('settingsModal')">Peruuta</button><button class="btn btn-primary" onclick="changePassword()">Vaihda salasana</button></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('settingsModal')">Sulje</button></div>
   </div>
 </div>
 
@@ -667,6 +690,7 @@ async function bulkAction(type){
 // ── ADD/EDIT ──────────────────────────────────
 function openAddModal(){
   editingId=null;document.getElementById('editModalTitle').textContent='Lisää pelaaja';
+  document.getElementById('deleteBtn').style.display='none';
   ['fNum','fName','fNotes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fSize').value='';
   document.getElementById('fDarkOwn').value='seura';document.getElementById('fDarkStatus').value='lainassa';
@@ -680,6 +704,7 @@ function openAddModal(){
 function openEditModal(id){
   const p=data.find(x=>x.id===id);if(!p)return;
   editingId=id;document.getElementById('editModalTitle').textContent='Muokkaa: '+(p.name||'#'+p.num);
+  document.getElementById('deleteBtn').style.display='';
   document.getElementById('fNum').value=p.num;document.getElementById('fSize').value=p.size;
   document.getElementById('fName').value=p.name;document.getElementById('fNotes').value=p.notes;
   document.getElementById('fDarkOwn').value=p.dark.own==='ei-olemassa'||p.dark.status==='ei-olemassa'?'ei-olemassa':p.dark.own;
@@ -1008,10 +1033,210 @@ async function restoreSnap(playerId,histId){
 }
 
 // ── SETTINGS ──────────────────────────────────
+// ── DELETE ────────────────────────────────────
+async function deleteEntry(){
+  const p=data.find(x=>x.id===editingId);if(!p)return;
+  const label=p.name?`${p.name} (#${p.num})`:`#${p.num}`;
+  if(!confirm(`Poistetaanko pelaaja ${label} pysyvästi?\n\nTätä ei voi peruuttaa.`))return;
+  setLoading(true);
+  try{
+    await sb.from('jerseys').delete().eq('id',editingId);
+    await addLog('Poistettu',editingId,p.name||'#'+p.num,p,null);
+    showToast(`${label} poistettu`);closeModal('editModal');await loadData();
+  }catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
+}
+
+// ── EXPORT CSV ────────────────────────────────
+function exportCSV(){
+  const headers=['id','num','size','name','notes','dark_own','dark_status','dark_date','dark_oma_date','light_own','light_status','light_date','light_oma_date'];
+  const rows=data.map(p=>[
+    p.id,p.num,p.size,p.name,p.notes,
+    p.dark.own,p.dark.status,p.dark.date||'',p.dark.oma_date||'',
+    p.light.own,p.light.status,p.light.date||'',p.light.oma_date||''
+  ].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','));
+  const csv=[headers.join(','),...rows].join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`pelipaita_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();URL.revokeObjectURL(a.href);
+  showToast(`${data.length} pelaajaa viety CSV:ksi`);
+}
+
+// ── IMPORT CSV ────────────────────────────────
+async function importCSV(input){
+  const file=input.files[0];if(!file)return;
+  const msg=document.getElementById('importMsg');
+  msg.style.display='block';msg.style.color='var(--text2)';msg.textContent='Luetaan tiedostoa...';
+  const text=await file.text();
+  const lines=text.replace(/^\uFEFF/,'').trim().split('\n');
+  const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
+  const required=['id','num','name','dark_own','dark_status','light_own','light_status'];
+  const missing=required.filter(r=>!headers.includes(r));
+  if(missing.length){msg.style.color='var(--red)';msg.textContent=`Virhe: puuttuvat sarakkeet: ${missing.join(', ')}`;input.value='';return;}
+  const parseRow=line=>{
+    const vals=[];let cur='',inQ=false;
+    for(const c of line){if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){vals.push(cur);cur='';}else cur+=c;}
+    vals.push(cur);
+    return Object.fromEntries(headers.map((h,i)=>[h,vals[i]?.replace(/^"|"$/g,'').replace(/""/g,'"')||'']));
+  };
+  const rows=lines.slice(1).filter(l=>l.trim()).map(parseRow);
+  if(!rows.length){msg.style.color='var(--red)';msg.textContent='Ei dataa CSV:ssa.';input.value='';return;}
+  if(!confirm(`Tuodaanko ${rows.length} pelaajaa? Olemassa olevat tiedot paivitetaan.`)){input.value='';return;}
+  setLoading(true);
+  try{
+    const upsertRows=rows.map(r=>({
+      id:r.id||gid(),num:r.num,size:r.size,name:r.name,notes:r.notes,
+      dark_own:r.dark_own||'seura',dark_status:r.dark_status||'vapaa',
+      dark_date:r.dark_date||null,dark_oma_date:r.dark_oma_date||null,
+      light_own:r.light_own||'seura',light_status:r.light_status||'vapaa',
+      light_date:r.light_date||null,light_oma_date:r.light_oma_date||null,
+      updated_at:new Date().toISOString()
+    }));
+    const{error}=await sb.from('jerseys').upsert(upsertRows);
+    if(error)throw error;
+    msg.style.color='var(--green)';msg.textContent=`${rows.length} pelaajaa tuotu onnistuneesti!`;
+    showToast(`${rows.length} pelaajaa tuotu`);await loadData();
+  }catch(e){msg.style.color='var(--red)';msg.textContent='Virhe: '+e.message;}
+  finally{setLoading(false);input.value='';}
+}
+
+// ── MIGRATION ─────────────────────────────────
+const migTexts={
+supabase:`-- Supabase → Supabase
+-- 1. Vie data: Asetukset → Vie CSV
+-- 2. Luo taulut uudessa projektissa (aja setup SQL)
+-- 3. Tuo CSV: Asetukset → Tuo CSV
+
+-- Tai Supabase CLI:lla:
+supabase db dump -p <salasana> > dump.sql
+supabase db restore -p <salasana> < dump.sql`,
+
+postgres:`-- PostgreSQL
+-- Luo taulut kohteessa:
+CREATE TABLE jerseys (
+  id TEXT PRIMARY KEY, num TEXT, size TEXT,
+  name TEXT, notes TEXT,
+  dark_own TEXT, dark_status TEXT,
+  dark_date DATE, dark_oma_date DATE,
+  light_own TEXT, light_status TEXT,
+  light_date DATE, light_oma_date DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE change_log (
+  id TEXT PRIMARY KEY, ts TIMESTAMPTZ,
+  ip TEXT, action TEXT, player_id TEXT,
+  player_name TEXT, before_data JSONB, after_data JSONB
+);
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMPTZ);
+
+-- Vie Supabasesta:
+pg_dump "postgresql://postgres:<pw>@db.<ref>.supabase.co:5432/postgres" \\
+  --data-only -t jerseys -t change_log -t settings > data.sql
+
+-- Tuo kohteeseen:
+psql "postgresql://<user>:<pw>@<host>:5432/<db>" < data.sql`,
+
+mysql:`-- MySQL / MariaDB
+-- Luo taulut:
+CREATE TABLE jerseys (
+  id VARCHAR(32) PRIMARY KEY, num VARCHAR(10),
+  size VARCHAR(20), name VARCHAR(100), notes TEXT,
+  dark_own VARCHAR(20), dark_status VARCHAR(20),
+  dark_date DATE, dark_oma_date DATE,
+  light_own VARCHAR(20), light_status VARCHAR(20),
+  light_date DATE, light_oma_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+CREATE TABLE change_log (
+  id VARCHAR(32) PRIMARY KEY, ts TIMESTAMP,
+  ip VARCHAR(50), action VARCHAR(100),
+  player_id VARCHAR(32), player_name VARCHAR(100),
+  before_data JSON, after_data JSON
+);
+CREATE TABLE settings (key VARCHAR(50) PRIMARY KEY, value TEXT, updated_at TIMESTAMP);
+
+-- Tuo CSV:
+LOAD DATA INFILE '/path/pelipaita_export.csv'
+INTO TABLE jerseys FIELDS TERMINATED BY ','
+ENCLOSED BY '"' LINES TERMINATED BY '\n' IGNORE 1 ROWS;`,
+
+sqlite:`-- SQLite (myos Turso)
+-- Luo taulut:
+CREATE TABLE IF NOT EXISTS jerseys (
+  id TEXT PRIMARY KEY, num TEXT, size TEXT,
+  name TEXT, notes TEXT,
+  dark_own TEXT DEFAULT 'seura',
+  dark_status TEXT DEFAULT 'vapaa',
+  dark_date TEXT, dark_oma_date TEXT,
+  light_own TEXT DEFAULT 'seura',
+  light_status TEXT DEFAULT 'vapaa',
+  light_date TEXT, light_oma_date TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Tuo CSV Pythonilla:
+import csv, sqlite3
+conn = sqlite3.connect('pelipaita.db')
+with open('pelipaita_export.csv', encoding='utf-8-sig') as f:
+    for row in csv.DictReader(f):
+        conn.execute(
+          'INSERT OR REPLACE INTO jerseys VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,datetime("now"),datetime("now"))',
+          [row['id'],row['num'],row['size'],row['name'],row['notes'],
+           row['dark_own'],row['dark_status'],row['dark_date'],row['dark_oma_date'],
+           row['light_own'],row['light_status'],row['light_date'],row['light_oma_date']])
+conn.commit()`,
+
+firebase:`// Firebase / Firestore
+// Asennus: npm install firebase-admin csv-parse
+
+const admin = require('firebase-admin');
+const { parse } = require('csv-parse/sync');
+const fs = require('fs');
+
+admin.initializeApp({ credential: admin.credential.applicationDefault() });
+const db = admin.firestore();
+
+const rows = parse(fs.readFileSync('pelipaita_export.csv'),
+  { columns: true, bom: true });
+
+const batch = db.batch();
+rows.forEach(row => {
+  batch.set(db.collection('jerseys').doc(row.id), {
+    num: row.num, size: row.size,
+    name: row.name, notes: row.notes,
+    dark: { own: row.dark_own, status: row.dark_status,
+            date: row.dark_date, oma_date: row.dark_oma_date },
+    light: { own: row.light_own, status: row.light_status,
+             date: row.light_date, oma_date: row.light_oma_date },
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+});
+await batch.commit();
+console.log('Tuotu ' + rows.length + ' pelaajaa');`
+};
+
+let currentMigTab='supabase';
+function showMigTab(tab){
+  currentMigTab=tab;
+  document.querySelectorAll('[id^="migTab_"]').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('migTab_'+tab);
+  if(el)el.classList.add('active');
+  document.getElementById('migContent').textContent=migTexts[tab]||'';
+}
+function copyMigration(){
+  navigator.clipboard.writeText(migTexts[currentMigTab]||'').then(()=>showToast('Kopioitu leikepöydälle'));
+}
+
 function openSettingsModal(){
   ['sCurrent','sNew','sNew2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('settingsError').classList.remove('show');
+  document.getElementById('importMsg').style.display='none';
   openModal('settingsModal');
+  setTimeout(()=>showMigTab('supabase'),50);
 }
 
 // ── MODALS ────────────────────────────────────

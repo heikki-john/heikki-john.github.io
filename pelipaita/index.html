@@ -127,13 +127,28 @@ textarea{resize:vertical;min-height:56px;}
 .clight{width:10px;height:10px;border-radius:50%;background:#e2e8f0;border:1px solid #cbd5e1;display:inline-block;}
 
 /* LOG */
-.log-entry{padding:10px 14px;border-bottom:1px solid var(--border);font-size:.8rem;}
+.log-entry{border-bottom:1px solid var(--border);transition:background .1s;}
 .log-entry:last-child{border-bottom:none;}
-.log-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.log-entry:hover{background:#fafaf8;}
+.log-entry-header{display:flex;align-items:center;gap:10px;padding:10px 14px 6px;flex-wrap:wrap;cursor:pointer;}
+.log-entry-body{padding:0 14px 12px;display:none;}
+.log-entry-body.open{display:block;}
+.log-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .log-time{color:var(--text3);font-family:'DM Mono',monospace;font-size:.72rem;}
 .log-ip{color:var(--text3);font-family:'DM Mono',monospace;font-size:.72rem;background:var(--surface2);padding:1px 6px;border-radius:4px;}
-.log-action{font-weight:600;}
-.log-detail{color:var(--text2);margin-top:3px;font-size:.75rem;}
+.log-action{font-weight:700;font-size:.82rem;}
+.log-player{font-weight:600;font-size:.82rem;color:var(--accent);}
+.log-num{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;color:var(--accent);}
+.log-chevron{margin-left:auto;color:var(--text3);font-size:.75rem;transition:transform .2s;}
+.log-chevron.open{transform:rotate(180deg);}
+.diff-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px;background:var(--surface2);border-radius:var(--rs);overflow:hidden;}
+.diff-table th{padding:6px 10px;text-align:left;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3);background:var(--border);}
+.diff-table td{padding:6px 10px;border-top:1px solid var(--border);}
+.diff-field{color:var(--text2);font-weight:600;white-space:nowrap;}
+.diff-old{color:var(--red);font-weight:600;}
+.diff-new{color:var(--green);font-weight:600;}
+.diff-same{color:var(--text3);}
+.log-restore-btn{margin-top:10px;}
 
 /* HISTORY */
 .history-snapshot{border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;overflow:hidden;}
@@ -284,7 +299,7 @@ textarea{resize:vertical;min-height:56px;}
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label>Pelinumero</label><input type="text" id="fNum" placeholder="esim. 10" maxlength="4" oninput="autoFillFromNum(this.value)"></div>
-        <div class="form-group"><label>Koko</label><select id="fSize"><option value="">– valitse –</option><option>140</option><option>150</option><option>160</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></div>
+        <div class="form-group"><label>Koko</label><select id="fSize"><option value="">– valitse –</option><option>140</option><option>150</option><option>160</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option disabled style="color:var(--text3);font-size:.75rem">── Maalivahti ──</option><option>MV S</option><option>MV L</option><option>MV XL</option><option>MV XXL</option></select></div>
         <div class="form-group full"><label>Pelaajan nimi</label><input type="text" id="fName" placeholder="Etunimi Sukunimi"></div>
       </div>
       <div class="section-label">Paidat</div>
@@ -841,22 +856,75 @@ async function renderLokiView(){
   el.innerHTML='<div class="empty-state"><div>Ladataan…</div></div>';
   const logs=await loadLogs();
   if(!logs.length){el.innerHTML='<div class="empty-state"><div class="icon">📋</div><div>Ei lokimerkintöjä</div></div>';return;}
-  el.innerHTML=logs.map(e=>{
+  el.innerHTML=logs.map((e,i)=>{
     const ts=new Date(e.ts).toLocaleString('fi-FI');
-    const diff=e.before_data&&e.after_data?diffSummary(e.before_data,e.after_data):'';
-    return`<div class="log-entry"><div class="log-meta"><span class="log-action">${e.action}</span><span style="color:var(--text2);font-size:.8rem">${e.player_name||''}</span></div><div class="log-meta"><span class="log-time">⏱ ${ts}</span><span class="log-ip">IP: ${e.ip||'–'}</span></div>${diff?`<div class="log-detail">${diff}</div>`:''}</div>`;
+    const a=e.after_data,b=e.before_data;
+    const num=(a&&a.num)||(b&&b.num)||'';
+    const name=e.player_name||'';
+    const diffs=buildDiffRows(b,a);
+    const hasDiff=diffs.length>0;
+    const pid=(a&&a.id)||(b&&b.id)||e.player_id||'';
+    return`<div class="log-entry">
+      <div class="log-entry-header" onclick="toggleLog('log${i}')">
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1">
+          <div class="log-meta">
+            <span class="log-action">${e.action}</span>
+            ${num?`<span class="log-num">#${num}</span>`:''}
+            ${name?`<span class="log-player">${name}</span>`:''}
+            ${hasDiff?'<span style="font-size:.7rem;color:var(--text3);background:var(--surface2);padding:1px 6px;border-radius:10px">'+diffs.length+' muutosta</span>':''}
+          </div>
+          <div class="log-meta">
+            <span class="log-time">⏱ ${ts}</span>
+            <span class="log-ip">IP: ${e.ip||'–'}</span>
+          </div>
+        </div>
+        <span class="log-chevron" id="chev${i}">${hasDiff||pid?'▼':''}</span>
+      </div>
+      <div class="log-entry-body" id="log${i}">
+        ${hasDiff?`<table class="diff-table">
+          <thead><tr><th>Kenttä</th><th>Ennen</th><th>Jälkeen</th></tr></thead>
+          <tbody>${diffs.map(d=>`<tr>
+            <td class="diff-field">${d.field}</td>
+            <td class="diff-old">${d.before}</td>
+            <td class="diff-new">${d.after}</td>
+          </tr>`).join('')}</tbody>
+        </table>`:'<div style="font-size:.8rem;color:var(--text3);padding:4px 0">Ei muutostietoja tallessa</div>'}
+        ${pid?`<button class="btn btn-sm btn-warning log-restore-btn" onclick="openHistory('${pid}');setFilter('kaikki',document.querySelector('.filter-btn'))">↩ Avaa historia</button>`:''}
+      </div>
+    </div>`;
   }).join('');
+}
+function toggleLog(id){
+  const body=document.getElementById(id);
+  const idx=id.replace('log','');
+  const chev=document.getElementById('chev'+idx);
+  if(!body)return;
+  const open=body.classList.toggle('open');
+  if(chev)chev.classList.toggle('open',open);
 }
 // openLogModal replaced by filter view
 function diffSummary(b,a){
-  const ch=[];
-  ['num','size','name','notes'].forEach(k=>{if(b[k]!==a[k])ch.push(`${k}: ${b[k]||'–'} → ${a[k]||'–'}`);});
-  ['dark','light'].forEach(c=>{
-    const bj=b[c];const aj=a[c];
-    if(bj&&aj&&bj.status!==aj.status)ch.push(`${c==='dark'?'Tumma':'Vaalea'}: ${bj.status} → ${aj.status}`);
-    if(bj&&aj&&bj.own!==aj.own)ch.push(`${c==='dark'?'Tumma':'Vaalea'} omistus: ${bj.own} → ${aj.own}`);
+  return buildDiffRows(b,a).map(d=>`${d.field}: ${d.before} → ${d.after}`).join(' | ');
+}
+function buildDiffRows(b,a){
+  if(!b&&!a)return[];
+  const rows=[];
+  const fldLabel={num:'Numero',size:'Koko',name:'Nimi',notes:'Huomiot'};
+  Object.entries(fldLabel).forEach(([k,lbl])=>{
+    const bv=(b&&b[k])||'';const av=(a&&a[k])||'';
+    if(bv!==av)rows.push({field:lbl,before:bv||'–',after:av||'–'});
   });
-  return ch.join(' | ');
+  const jerseyLabel={dark:'🟫 Tumma',light:'⬜ Vaalea'};
+  const statusLabel={lainassa:'Lainassa',palautettu:'Palautettu',vapaa:'Vapaa',kadonnut:'Kadonnut',oma:'Oma','ei-kaytossa':'Ei käytössä'};
+  ['dark','light'].forEach(c=>{
+    const bj=(b&&b[c])||{};const aj=(a&&a[c])||{};
+    const lbl=jerseyLabel[c];
+    if(bj.own!==aj.own)rows.push({field:lbl+' omistus',before:bj.own||'–',after:aj.own||'–'});
+    if(bj.status!==aj.status)rows.push({field:lbl+' tila',before:statusLabel[bj.status]||bj.status||'–',after:statusLabel[aj.status]||aj.status||'–'});
+    const bd=bj.date||bj.oma_date||'';const ad=aj.date||aj.oma_date||'';
+    if(bd!==ad)rows.push({field:lbl+' pvm',before:bd?fmtDate(bd):'–',after:ad?fmtDate(ad):'–'});
+  });
+  return rows;
 }
 
 // ── HISTORY ───────────────────────────────────

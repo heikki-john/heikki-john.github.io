@@ -233,8 +233,8 @@ textarea{resize:vertical;min-height:56px;}
     <button class="filter-btn" onclick="setFilter('lainassa',this)">Lainassa</button>
     <button class="filter-btn" onclick="setFilter('vapaa',this)">Vapaat</button>
     <button class="filter-btn" onclick="setFilter('kadonnut',this)">Kadonneet</button>
-    <button class="filter-btn" onclick="openLogModal()">Loki</button>
-    <button class="filter-btn" onclick="openOmaModal()">👕 Omat paidat</button>
+    <button class="filter-btn" onclick="setFilter('oma',this)">Omat paidat</button>
+    <button class="filter-btn" onclick="setFilter('loki',this)">Loki</button>
     <button class="filter-btn" onclick="openFreeNumsModal()">🔢 Vapaat numerot</button>
     <button class="filter-btn" style="background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600" onclick="openAddModal()">+ Lisää paita</button>
   </div>
@@ -258,6 +258,11 @@ textarea{resize:vertical;min-height:56px;}
   <span id="infoOma"></span>
 </div>
 
+<div id="lokiView" style="display:none;padding:0 24px 20px;">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);">
+    <div id="lokiContent"><div class="empty-state"><div>Ladataan…</div></div></div>
+  </div>
+</div>
 <div class="main">
   <div class="table-wrap">
     <table>
@@ -313,14 +318,6 @@ textarea{resize:vertical;min-height:56px;}
   </div>
 </div>
 
-<!-- LOG -->
-<div class="modal-overlay" id="logModal">
-  <div class="modal" style="max-width:700px">
-    <div class="modal-header"><span class="modal-title">Muutosloki</span><button class="modal-close" onclick="closeModal('logModal')">×</button></div>
-    <div class="modal-body" style="padding:0"><div id="logContent"></div></div>
-  </div>
-</div>
-
 <!-- HISTORY -->
 <div class="modal-overlay" id="historyModal">
   <div class="modal" style="max-width:600px">
@@ -341,14 +338,6 @@ textarea{resize:vertical;min-height:56px;}
       <div class="login-error" id="settingsError" style="margin-top:10px"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('settingsModal')">Peruuta</button><button class="btn btn-primary" onclick="changePassword()">Vaihda salasana</button></div>
-  </div>
-</div>
-
-<!-- OMA PAIDAT MODAL -->
-<div class="modal-overlay" id="omaModal">
-  <div class="modal" style="max-width:600px">
-    <div class="modal-header"><span class="modal-title">👕 Omat paidat</span><button class="modal-close" onclick="closeModal('omaModal')">×</button></div>
-    <div class="modal-body" style="padding:0"><div id="omaContent"></div></div>
   </div>
 </div>
 
@@ -500,9 +489,21 @@ function canReloan(p){return(p.dark.own==='seura'&&['palautettu','vapaa'].includ
 
 function renderTable(){
   const q=document.getElementById('searchInput').value.toLowerCase();
+  // Handle special views
+  const tableWrap=document.querySelector('.table-wrap');
+  const cardList=document.getElementById('cardList');
+  const lokiView=document.getElementById('lokiView');
+  if(currentFilter==='loki'){
+    tableWrap.style.display='none';if(cardList)cardList.style.display='none';
+    lokiView.style.display='block';renderLokiView();updateStats();return;
+  }
+  tableWrap.style.display='';
+  lokiView.style.display='none';
+
   let rows=data.filter(p=>{
     if(q&&!p.name.toLowerCase().includes(q)&&!p.num.includes(q))return false;
     if(currentFilter==='kaikki')return true;
+    if(currentFilter==='oma')return p.dark.own==='oma'||p.light.own==='oma';
     return getStatus(p)===currentFilter;
   }).sort((a,b)=>(parseInt(a.num)||999)-(parseInt(b.num)||999));
   const tbody=document.getElementById('tableBody');
@@ -532,6 +533,8 @@ function renderTable(){
 function renderCards(rows){
   const cardList=document.getElementById('cardList');
   if(!cardList)return;
+  if(currentFilter==='loki'){cardList.style.display='none';return;}
+  if(window.innerWidth<=768)cardList.style.display='flex'; else cardList.style.display='none';
   if(!rows||!rows.length){cardList.innerHTML='<div class="empty-state"><div class="icon">🏅</div><div>Ei tuloksia</div></div>';return;}
   cardList.innerHTML=rows.map(p=>{
     const dd=p.dark.date?fmtDate(p.dark.date):(p.dark.oma_date?fmtDate(p.dark.oma_date):'');
@@ -833,16 +836,18 @@ async function doReloanAction(){
 }
 
 // ── LOG ───────────────────────────────────────
-async function openLogModal(){
-  document.getElementById('logContent').innerHTML='<div class="empty-state"><div>Ladataan…</div></div>';openModal('logModal');
+async function renderLokiView(){
+  const el=document.getElementById('lokiContent');
+  el.innerHTML='<div class="empty-state"><div>Ladataan…</div></div>';
   const logs=await loadLogs();
-  if(!logs.length){document.getElementById('logContent').innerHTML='<div class="empty-state"><div class="icon">📋</div><div>Ei lokimerkintöjä</div></div>';return;}
-  document.getElementById('logContent').innerHTML=logs.map(e=>{
+  if(!logs.length){el.innerHTML='<div class="empty-state"><div class="icon">📋</div><div>Ei lokimerkintöjä</div></div>';return;}
+  el.innerHTML=logs.map(e=>{
     const ts=new Date(e.ts).toLocaleString('fi-FI');
     const diff=e.before_data&&e.after_data?diffSummary(e.before_data,e.after_data):'';
     return`<div class="log-entry"><div class="log-meta"><span class="log-action">${e.action}</span><span style="color:var(--text2);font-size:.8rem">${e.player_name||''}</span></div><div class="log-meta"><span class="log-time">⏱ ${ts}</span><span class="log-ip">IP: ${e.ip||'–'}</span></div>${diff?`<div class="log-detail">${diff}</div>`:''}</div>`;
   }).join('');
 }
+// openLogModal replaced by filter view
 function diffSummary(b,a){
   const ch=[];
   ['num','size','name','notes'].forEach(k=>{if(b[k]!==a[k])ch.push(`${k}: ${b[k]||'–'} → ${a[k]||'–'}`);});
@@ -910,7 +915,7 @@ document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click
 
 // ── INIT ──────────────────────────────────────
 function openOmaModal(){
-  openModal('omaModal');
+  // oma filter view - no modal needed
   const oma=[];
   data.forEach(p=>{
     if(p.dark.own==='oma')oma.push({player:p.name||'#'+p.num,num:p.num,size:p.size,label:'🟫 Tumma',date:p.dark.oma_date});

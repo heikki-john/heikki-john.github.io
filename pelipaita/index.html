@@ -96,6 +96,7 @@ tbody td{padding:9px 13px;vertical-align:middle;}
 .status-pill.oma{background:var(--surface2);color:var(--text3);}
 .status-pill.vapaa{background:var(--accent-light);color:var(--accent);}
 .status-pill.ei-kaytossa{background:var(--surface2);color:var(--text3);}
+.status-pill.ei-olemassa{display:none;}
 .sdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
 .actions-cell{display:flex;gap:5px;flex-wrap:wrap;}
 .empty-state{padding:50px 20px;text-align:center;color:var(--text3);}
@@ -307,13 +308,13 @@ textarea{resize:vertical;min-height:56px;}
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="cdark"></span> Tumma paita</div>
           <div class="form-group"><label>Omistus</label><select id="fDarkOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus" onchange="updateOwnFields()"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fDarkDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
+          <div id="fDarkLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fDarkStatus" onchange="updateOwnFields()"><option value="ei-olemassa">Ei olemassa</option><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fDarkDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fDarkDate"></div></div>
           <div id="fDarkOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fDarkOmaDate"></div></div>
         </div>
         <div class="jersey-card">
           <div class="jersey-card-title"><span class="clight"></span> Vaalea paita</div>
           <div class="form-group"><label>Omistus</label><select id="fLightOwn" onchange="updateOwnFields()"><option value="seura">Seuran paita</option><option value="oma">Pelaajan oma</option></select></div>
-          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus" onchange="updateOwnFields()"><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fLightDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
+          <div id="fLightLoanFields"><div class="form-group" style="margin-top:8px"><label>Tila</label><select id="fLightStatus" onchange="updateOwnFields()"><option value="ei-olemassa">Ei olemassa</option><option value="ei-kaytossa">Ei käytössä</option><option value="vapaa">Vapaa</option><option value="lainassa">Lainassa</option><option value="palautettu">Palautettu</option><option value="kadonnut">Kadonnut</option></select></div><div id="fLightDateField" class="form-group" style="margin-top:8px"><label>Annettu pvm</label><input type="date" id="fLightDate"></div></div>
           <div id="fLightOmaFields" style="display:none"><div class="form-group" style="margin-top:8px"><label>Hankintapäivä</label><input type="date" id="fLightOmaDate"></div></div>
         </div>
       </div>
@@ -485,8 +486,8 @@ async function loadHistory(pid){
 // ── RENDER ────────────────────────────────────
 function getStatus(p){
   const st=[];
-  if(p.dark.own==='seura'&&p.dark.status!=='ei-kaytossa')st.push(p.dark.status);
-  if(p.light.own==='seura'&&p.light.status!=='ei-kaytossa')st.push(p.light.status);
+  if(p.dark.own==='seura'&&!['ei-kaytossa','ei-olemassa'].includes(p.dark.status))st.push(p.dark.status);
+  if(p.light.own==='seura'&&!['ei-kaytossa','ei-olemassa'].includes(p.light.status))st.push(p.light.status);
   if(st.includes('kadonnut'))return'kadonnut';
   if(st.includes('lainassa'))return'lainassa';
   // palautettu = vapaa for filtering purposes
@@ -496,6 +497,7 @@ function getStatus(p){
 function pill(j){
   if(j.own==='oma')return'<span class="status-pill oma"><span class="sdot"></span>Oma</span>';
   if(j.status==='ei-kaytossa')return'<span class="status-pill ei-kaytossa">–</span>';
+  if(j.status==='ei-olemassa')return'';
   const lbl={lainassa:'Lainassa',palautettu:'Palautettu',kadonnut:'Kadonnut',vapaa:'Vapaa'};
   return`<span class="status-pill ${j.status}"><span class="sdot"></span>${lbl[j.status]||j.status}</span>`;
 }
@@ -593,6 +595,7 @@ function updateStats(){
   data.forEach(p=>{
     ['dark','light'].forEach(c=>{
       const j=p[c];
+      if(j.status==='ei-olemassa')return;
       if(j.own==='oma'){oma++;total++;}
       else if(j.status==='lainassa'){lainassa++;total++;}
       else if(j.status==='vapaa'){vapaa++;total++;}
@@ -703,8 +706,8 @@ function autoFillFromNum(val){
 function updateOwnFields(){
   const dOma=document.getElementById('fDarkOwn').value==='oma';
   const lOma=document.getElementById('fLightOwn').value==='oma';
-  const dEi=!dOma&&document.getElementById('fDarkStatus').value==='ei-kaytossa';
-  const lEi=!lOma&&document.getElementById('fLightStatus').value==='ei-kaytossa';
+  const dEi=!dOma&&['ei-kaytossa','ei-olemassa'].includes(document.getElementById('fDarkStatus').value);
+  const lEi=!lOma&&['ei-kaytossa','ei-olemassa'].includes(document.getElementById('fLightStatus').value);
   document.getElementById('fDarkLoanFields').style.display=dOma?'none':'';
   document.getElementById('fDarkOmaFields').style.display=dOma?'':'none';
   document.getElementById('fLightLoanFields').style.display=lOma?'none':'';
@@ -827,26 +830,58 @@ async function doReturnAction(){
 }
 function openReloanModal(id){
   const p=data.find(x=>x.id===id);if(!p)return;
-  actionTarget=id;document.getElementById('actionModalTitle').textContent='Lainaa: '+(p.name||'#'+p.num);
+  actionTarget=id;
+  document.getElementById('actionModalTitle').textContent='Lainaa: '+(p.name||'#'+p.num);
   const today=new Date().toISOString().slice(0,10);
   const items=[];
   if(p.dark.own==='seura'&&['palautettu','vapaa'].includes(p.dark.status))items.push({k:'dark',lbl:'🟫 Tumma paita',st:p.dark.status});
   if(p.light.own==='seura'&&['palautettu','vapaa'].includes(p.light.status))items.push({k:'light',lbl:'⬜ Vaalea paita',st:p.light.status});
   const stLbl={palautettu:'Palautettu',vapaa:'Vapaa'};
-  let html='';
-  html+=items.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;font-size:.875rem;background:var(--surface)"><input type="checkbox" name="rl" value="${it.k}" checked style="flex-shrink:0">${it.lbl}<span style="margin-left:auto;font-size:.72rem;color:var(--green);font-weight:600">${stLbl[it.st]||it.st}</span></label>`).join('');
-  html+=`<div class="form-group" style="margin-top:12px"><label>Lainauspäivä</label><input type="date" id="reloanDate" value="${today}"></div>`;
+  const cardStyle='border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin-bottom:10px;background:var(--surface2)';
+  let html=`
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Pelaajan nimi</label>
+      <input type="text" id="reloanName" value="" placeholder="Etunimi Sukunimi">
+    </div>
+    <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Lainattavat paidat</div>
+  `;
+  html+=items.map(it=>`
+    <div style="${cardStyle}">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.875rem;font-weight:700;margin-bottom:10px">
+        <input type="checkbox" name="rl" value="${it.k}" checked style="width:16px;height:16px;flex-shrink:0">
+        ${it.lbl}
+        <span style="margin-left:auto;font-size:.72rem;color:var(--green);font-weight:600">${stLbl[it.st]||it.st}</span>
+      </label>
+      <div class="form-group">
+        <label>Omistus</label>
+        <select name="rl_own_${it.k}">
+          <option value="seura" selected>Seuran paita</option>
+          <option value="oma">Pelaajan oma</option>
+        </select>
+      </div>
+    </div>
+  `).join('');
+  html+=`<div class="form-group" style="margin-top:4px"><label>Annettu pvm</label><input type="date" id="reloanDate" value="${today}"></div>`;
   document.getElementById('actionModalContent').innerHTML=html;
-  document.getElementById('actionConfirmBtn').onclick=doReloanAction;openModal('actionModal');
+  document.getElementById('actionConfirmBtn').onclick=doReloanAction;
+  openModal('actionModal');
 }
 async function doReloanAction(){
   const checks=[...document.querySelectorAll('input[name="rl"]:checked')].map(c=>c.value);
   if(!checks.length){showToast('Valitse vähintään yksi',true);return;}
   const date=document.getElementById('reloanDate').value;
+  const newName=document.getElementById('reloanName').value.trim();
   const p=data.find(x=>x.id===actionTarget);const before=JSON.parse(JSON.stringify(p));
-  checks.forEach(k=>{p[k].status='lainassa';p[k].date=date;});
+  if(newName)p.name=newName;
+  checks.forEach(k=>{
+    const ownSel=document.querySelector(`[name="rl_own_${k}"]`);
+    const own=ownSel?ownSel.value:'seura';
+    p[k].own=own;
+    if(own==='oma'){p[k].status='oma';p[k].oma_date=date;p[k].date=null;}
+    else{p[k].status='lainassa';p[k].date=date;p[k].oma_date=null;}
+  });
   setLoading(true);
-  try{await updatePlayer(p);await addLog('Lainattu uudelleen',p.id,p.name,before,p);showToast('Lainattu ✓');closeModal('actionModal');await loadData();}
+  try{await updatePlayer(p);await addLog('Lainattu',p.id,p.name,before,p);showToast('Lainattu ✓');closeModal('actionModal');await loadData();}
   catch(e){showToast('Virhe: '+e.message,true);}finally{setLoading(false);}
 }
 

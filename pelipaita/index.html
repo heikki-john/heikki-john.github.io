@@ -649,8 +649,8 @@ async function bulkAction(type){
       const p=data.find(x=>x.id===id);if(!p)continue;
       const before=JSON.parse(JSON.stringify(p));
       if(type==='palauta'){
-        if(p.dark.own==='seura'&&['lainassa','kadonnut'].includes(p.dark.status))p.dark.status='palautettu';
-        if(p.light.own==='seura'&&['lainassa','kadonnut'].includes(p.light.status))p.light.status='palautettu';
+        if(p.dark.own==='seura'&&['lainassa','kadonnut'].includes(p.dark.status))p.dark.status='vapaa';
+        if(p.light.own==='seura'&&['lainassa','kadonnut'].includes(p.light.status))p.light.status='vapaa';
       }else if(type==='lainaa'){
         if(p.dark.own==='seura'&&p.dark.status==='palautettu'){p.dark.status='lainassa';p.dark.date=today;}
         if(p.light.own==='seura'&&p.light.status==='palautettu'){p.light.status='lainassa';p.light.date=today;}
@@ -774,7 +774,7 @@ function openReturnModal(id){
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:.8rem;font-weight:600;border:2px solid var(--border);background:var(--surface);transition:all .15s;" id="lbl_${j.key}_palautettu">
               <input type="checkbox" name="ret_${j.key}" value="palautettu" style="display:none" onchange="updateReturnLabel('${j.key}')">
-              ✓ Palautettu
+              ✓ Vapaa (palautettu)
             </label>
             <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:.8rem;font-weight:600;border:2px solid var(--border);background:var(--surface);transition:all .15s;" id="lbl_${j.key}_kadonnut">
               <input type="checkbox" name="ret_${j.key}" value="kadonnut" style="display:none" onchange="updateReturnLabel('${j.key}')">
@@ -818,7 +818,7 @@ async function doReturnAction(){
   let changed=0;
   ['dark','light'].forEach(key=>{
     const checked=document.querySelector(`[name="ret_${key}"]:checked`);
-    if(checked){p[key].status=checked.value;changed++;}
+    if(checked){p[key].status=checked.value==='palautettu'?'vapaa':checked.value;changed++;}
   });
   if(!changed){showToast('Valitse vähintään yksi toiminto',true);return;}
   setLoading(true);

@@ -858,6 +858,12 @@ async function doReturnAction(){
     if(checked){p[key].status=checked.value==='palautettu'?'vapaa':checked.value;changed++;}
   });
   if(!changed){showToast('Valitse vähintään yksi toiminto',true);return;}
+  // Tyhjennä nimi jos kaikki seuran paidat ovat nyt vapaita
+  const allFree=['dark','light'].every(k=>
+    p[k].own==='oma'||p[k].own==='ei-olemassa'||
+    ['vapaa','kadonnut','ei-kaytossa'].includes(p[k].status)
+  );
+  if(allFree)p.name='';
   setLoading(true);
   try{
     await updatePlayer(p);

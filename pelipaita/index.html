@@ -252,6 +252,7 @@ textarea{resize:vertical;min-height:56px;}
     <button class="filter-btn" onclick="setFilter('oma',this)">Omat paidat</button>
     <button class="filter-btn" onclick="setFilter('loki',this)">Loki</button>
     <button class="filter-btn" onclick="openFreeNumsModal()">🔢 Vapaat numerot</button>
+    <button class="filter-btn" onclick="openSizesModal()">📏 Koot</button>
     <button class="filter-btn" style="background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600" onclick="openAddModal()">+ Lisää paita</button>
   </div>
 </div>
@@ -385,6 +386,14 @@ textarea{resize:vertical;min-height:56px;}
   <div class="modal" style="max-width:500px">
     <div class="modal-header"><span class="modal-title">🔢 Vapaat numerot (1–99)</span><button class="modal-close" onclick="closeModal('freeNumsModal')">×</button></div>
     <div class="modal-body"><div id="freeNumsContent"></div></div>
+  </div>
+</div>
+
+<!-- KOOT MODAL -->
+<div class="modal-overlay" id="sizesModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><span class="modal-title">📏 Paitojen koot</span><button class="modal-close" onclick="closeModal('sizesModal')">×</button></div>
+    <div class="modal-body" style="padding:0"><div id="sizesContent"></div></div>
   </div>
 </div>
 
@@ -1281,6 +1290,115 @@ function openFreeNumsModal(){
     <p style="font-size:.75rem;color:var(--text3);margin-top:12px">💡 Klikkaa numeroa → avaa lisäyslomake esitäytettynä</p>`;
 }
 function prefillNum(n){closeModal('freeNumsModal');openAddModal();document.getElementById('fNum').value=n;autoFillFromNum(String(n));}
+
+// ── KOOT ──────────────────────────────────────
+function openSizesModal(){
+  openModal('sizesModal');
+  // Count jerseys by size, split by color and status
+  const sizeOrder=['140','150','160','S','M','L','XL','XXL','MV S','MV L','MV XL','MV XXL'];
+  const counts={};
+  data.forEach(p=>{
+    const sz=p.size||'–';
+    if(!counts[sz])counts[sz]={total:0,lainassa:0,vapaa:0,kadonnut:0,oma:0,dark:0,light:0};
+    const c=counts[sz];
+    // Dark jersey
+    if(p.dark.own!=='ei-olemassa'){
+      c.total++;
+      if(p.dark.own==='oma')c.oma++;
+      else if(p.dark.status==='lainassa')c.lainassa++;
+      else if(p.dark.status==='vapaa')c.vapaa++;
+      else if(p.dark.status==='kadonnut')c.kadonnut++;
+      else if(p.dark.status==='ei-kaytossa'){}
+      c.dark++;
+    }
+    // Light jersey
+    if(p.light.own!=='ei-olemassa'){
+      c.total++;
+      if(p.light.own==='oma')c.oma++;
+      else if(p.light.status==='lainassa')c.lainassa++;
+      else if(p.light.status==='vapaa')c.vapaa++;
+      else if(p.light.status==='kadonnut')c.kadonnut++;
+      else if(p.light.status==='ei-kaytossa'){}
+      c.light++;
+    }
+  });
+
+  const allSizes=[...new Set([...sizeOrder,...Object.keys(counts)])].filter(s=>counts[s]);
+  const sorted=allSizes.sort((a,b)=>{
+    const ai=sizeOrder.indexOf(a),bi=sizeOrder.indexOf(b);
+    if(ai>-1&&bi>-1)return ai-bi;
+    if(ai>-1)return -1;
+    if(bi>-1)return 1;
+    return a.localeCompare(b);
+  });
+
+  const total=Object.values(counts).reduce((s,c)=>s+c.total,0);
+  const thS='padding:9px 12px;text-align:center;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border)';
+  const thL='padding:9px 14px;text-align:left;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border)';
+  const tdC='padding:8px 12px;text-align:center;font-family:"DM Mono",monospace;font-size:.85rem;';
+  const bar=(n,tot,col)=>{
+    if(!n)return'<span style="color:var(--text3)">–</span>';
+    const pct=Math.round(n/tot*100);
+    return `<span style="font-weight:700;color:${col}">${n}</span>`;
+  };
+
+  const rows=sorted.map((sz,i)=>{
+    const c=counts[sz];
+    return`<tr style="border-bottom:1px solid var(--border);${i%2?'background:var(--surface2)':''}">
+      <td style="padding:8px 14px;font-family:'DM Mono',monospace;font-weight:700;font-size:.95rem">${sz}</td>
+      <td style="${tdC}font-weight:700">${c.total}</td>
+      <td style="${tdC}">${bar(c.lainassa,c.total,'var(--yellow)')}</td>
+      <td style="${tdC}">${bar(c.vapaa,c.total,'var(--accent)')}</td>
+      <td style="${tdC}">${bar(c.kadonnut,c.total,'var(--red)')}</td>
+      <td style="${tdC}">${bar(c.oma,c.total,'var(--text3)')}</td>
+    </tr>`;
+  }).join('');
+
+  // Summary bar chart
+  const chartItems=sorted.map(sz=>{
+    const c=counts[sz];
+    const pct=Math.round(c.total/total*100)||1;
+    return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;width:52px;flex-shrink:0">${sz}</span>
+      <div style="flex:1;background:var(--surface2);border-radius:4px;overflow:hidden;height:22px">
+        <div style="height:100%;width:${Math.round(c.total/Math.max(...sorted.map(s=>counts[s].total))*100)}%;background:var(--accent-light);border-radius:4px;display:flex;align-items:center;padding-left:8px;min-width:28px">
+          <span style="font-size:.72rem;font-weight:700;color:var(--accent)">${c.total}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        ${c.lainassa?`<span style="font-size:.7rem;background:var(--yellow-light);color:var(--yellow);padding:1px 6px;border-radius:10px;font-weight:600">${c.lainassa} lainassa</span>`:''}
+        ${c.vapaa?`<span style="font-size:.7rem;background:var(--accent-light);color:var(--accent);padding:1px 6px;border-radius:10px;font-weight:600">${c.vapaa} vapaa</span>`:''}
+        ${c.kadonnut?`<span style="font-size:.7rem;background:var(--red-light);color:var(--red);padding:1px 6px;border-radius:10px;font-weight:600">${c.kadonnut} kadonnut</span>`:''}
+        ${c.oma?`<span style="font-size:.7rem;background:var(--surface2);color:var(--text3);padding:1px 6px;border-radius:10px;font-weight:600">${c.oma} oma</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('sizesContent').innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface2)">
+      <div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Jakauma</div>
+      ${chartItems}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+      <thead><tr>
+        <th style="${thL}">Koko</th>
+        <th style="${thS}">Yhteensä</th>
+        <th style="${thS}">🟡 Lainassa</th>
+        <th style="${thS}">○ Vapaa</th>
+        <th style="${thS}">! Kadonnut</th>
+        <th style="${thS}">Oma</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="border-top:2px solid var(--border);background:var(--surface2)">
+        <td style="padding:9px 14px;font-weight:700;font-size:.8rem;color:var(--text2)">Yhteensä</td>
+        <td style="${tdC}font-weight:700">${total}</td>
+        <td style="${tdC}font-weight:700;color:var(--yellow)">${Object.values(counts).reduce((s,c)=>s+c.lainassa,0)||'–'}</td>
+        <td style="${tdC}font-weight:700;color:var(--accent)">${Object.values(counts).reduce((s,c)=>s+c.vapaa,0)||'–'}</td>
+        <td style="${tdC}font-weight:700;color:var(--red)">${Object.values(counts).reduce((s,c)=>s+c.kadonnut,0)||'–'}</td>
+        <td style="${tdC}font-weight:700;color:var(--text3)">${Object.values(counts).reduce((s,c)=>s+c.oma,0)||'–'}</td>
+      </tr></tfoot>
+    </table>`;
+}
 
 if(sessionStorage.getItem(SESSION_KEY)){loadData();}
 </script>

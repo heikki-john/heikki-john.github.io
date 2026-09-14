@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Räjähteiden vaara-aluelaskuri</title>
+<meta name="theme-color" content="#f3f5f6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Vaara-alue">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Vaalea teema (parannettu kontrasti) */
+    --bg:#eef1f3; --panel:#ffffff; --panel2:#e9edf0; --panel3:#dfe4e8;
+    --line:#d2d8dd; --line2:#b3bbc3;
+    --ink:#141a20; --muted:#414b54; --muted2:#5f6a73;
+    --amber:#9c5a05; --amber-dim:#fae7c4; --amber-line:#dca843;
+    --cyan:#0b6470; --cyan-dim:#cfe9ed;
+    --red:#b02a25; --red-dim:#f7d7d3;
+    --green:#227038; --green-dim:#d3ead8;
+    --violet:#4c3fc4; --violet-dim:#ded9fa;
+    --disc-text:#6b4a0e;
+    --ring-amber:#c47e0a; --ring-cyan:#128294; --ring-red:#c93a33; --ring-violet:#6355d6;
+    --shadow:0 1px 2px rgba(20,26,32,.04);
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --disp:'Barlow Semi Condensed',sans-serif;
+    --body:'Barlow',system-ui,sans-serif;
+  }
+  :root[data-theme="dark"]{
+    /* Tumma teema */
+    --bg:#12161a; --panel:#1b2026; --panel2:#232a31; --panel3:#2a323a;
+    --line:#323b45; --line2:#414c58;
+    --ink:#eef1f4; --muted:#aeb8c2; --muted2:#8794a0;
+    --amber:#f4b352; --amber-dim:rgba(244,179,82,.15); --amber-line:rgba(244,179,82,.45);
+    --cyan:#5fd0e0; --cyan-dim:rgba(95,208,224,.14);
+    --red:#f0685f; --red-dim:rgba(240,104,95,.16);
+    --green:#77cf82; --green-dim:rgba(119,207,130,.15);
+    --violet:#a89bff; --violet-dim:rgba(168,155,255,.16);
+    --disc-text:#f5d9a8;
+    --ring-amber:#f4b352; --ring-cyan:#5fd0e0; --ring-red:#f0685f; --ring-violet:#a89bff;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--body); font-size:16.5px; line-height:1.58;
+    background-image:
+      radial-gradient(1200px 600px at 80% -10%, rgba(240,165,58,.09), transparent 60%),
+      radial-gradient(900px 500px at -10% 20%, rgba(79,196,214,.07), transparent 55%);
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 18px 80px}
+
+  /* ---- Header ---- */
+  header{padding:34px 0 22px; border-bottom:1px solid var(--line)}
+  .kicker{font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--amber); display:flex; align-items:center; gap:9px; margin-bottom:12px}
+  .kicker::before{content:""; width:26px; height:2px; background:var(--amber); display:inline-block}
+  .theme-toggle{margin-left:auto; font-family:var(--body); font-weight:600; font-size:13px; letter-spacing:0;
+    text-transform:none; cursor:pointer; color:var(--ink); background:var(--panel2);
+    border:1px solid var(--line2); border-radius:8px; padding:6px 12px; transition:.15s}
+  .theme-toggle:hover{border-color:var(--amber); color:var(--amber)}
+  h1{font-family:var(--disp); font-weight:700; font-size:clamp(30px,5.4vw,46px);
+    letter-spacing:-.01em; line-height:1.02; margin:0 0 10px}
+  h1 span{color:var(--amber)}
+  .lede{color:var(--muted); max-width:62ch; font-size:16.5px}
+  .disclaimer{margin-top:18px; display:flex; gap:12px; align-items:flex-start;
+    background:var(--amber-dim); border:1px solid var(--amber-line); border-radius:10px; padding:13px 16px}
+  .disclaimer svg{flex:0 0 auto; margin-top:2px; color:var(--amber)}
+  .disclaimer p{margin:0; font-size:14.5px; line-height:1.5; color:var(--disc-text)}
+  .disclaimer b{color:var(--amber)}
+
+  /* ---- Section frame ---- */
+  section{margin-top:34px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:16px}
+  .sec-no{font-family:var(--mono); font-size:13px; color:var(--amber); font-weight:600;
+    border:1px solid var(--amber-line); border-radius:7px; padding:3px 9px; background:var(--amber-dim);
+    flex:0 0 auto; align-self:center}
+  .sec-title{font-family:var(--disp); font-weight:600; font-size:23px; letter-spacing:-.005em}
+  .sec-sub{color:var(--muted); font-size:14.5px; margin-left:auto; text-align:right; max-width:44ch}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:16px}
+  .formula{font-family:var(--mono); font-size:13px; color:var(--cyan); background:var(--panel2);
+    border:1px solid var(--line); border-radius:8px; padding:9px 13px; display:inline-block; margin-bottom:4px}
+
+  /* ---- Charge builder (mobiili = oletus, työpöytä = laajennus alempana) ---- */
+  .charge-row{display:grid; grid-template-columns:1fr 1fr; gap:9px; align-items:center;
+    border:1px solid var(--line); background:var(--panel2); border-radius:11px; padding:11px 12px; margin-bottom:11px}
+  .charge-row.head{display:none}
+  .charge-row .e-name{display:block; grid-column:1 / -1; order:-1;
+    font-family:var(--disp); font-weight:600; font-size:15.5px; color:var(--ink);
+    padding:1px 2px 7px; border-bottom:1px solid var(--line); margin-bottom:1px}
+  .charge-row .e-name:empty::before{content:"Valitse räjähdysaine"; color:var(--muted); font-weight:400}
+  .charge-row .e-sel{grid-column:1 / -1}
+  .charge-row .e-amt{grid-column:1 / -1}
+  .charge-row .e-fragwrap{grid-column:1 / -1; display:flex; align-items:center; gap:9px; cursor:pointer;
+    user-select:none; font-family:var(--body); font-size:14.5px; color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:9px 12px; background:var(--panel)}
+  .charge-row .e-fragwrap input{width:19px; height:19px; accent-color:var(--amber); cursor:pointer; margin:0}
+  .charge-row .e-fragwrap span{font-weight:500}
+  select,input[type=number]{
+    width:100%; background:var(--panel2); border:1px solid var(--line2); color:var(--ink);
+    font-family:var(--body); font-size:14.5px; padding:9px 11px; border-radius:8px; outline:none}
+  select{text-overflow:ellipsis; white-space:nowrap; overflow:hidden; padding-right:30px}
+  input[type=number]{font-family:var(--mono)}
+  select:focus,input:focus{border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-dim)}
+  .cell-ro{font-family:var(--mono); font-size:15px; color:var(--muted)}
+  .cell-tnt{font-family:var(--mono); font-size:15px; color:var(--amber); font-weight:600}
+  .charge-row .rm{justify-self:end}
+  .rm{background:transparent; border:1px solid var(--line2); color:var(--muted); width:38px; height:38px;
+    border-radius:8px; cursor:pointer; font-size:18px; line-height:1; transition:.15s}
+  .rm:hover{border-color:var(--red); color:var(--red)}
+  .btn{font-family:var(--disp); font-weight:600; letter-spacing:.01em; font-size:14.5px; cursor:pointer;
+    border-radius:9px; padding:10px 16px; border:1px solid var(--line2); background:var(--panel2); color:var(--ink);
+    transition:.15s}
+  .btn:hover{border-color:var(--cyan); color:var(--cyan)}
+  .btn-add{margin-top:6px}
+
+  .total{display:flex; flex-wrap:wrap; align-items:center; gap:18px; margin-top:20px;
+    background:linear-gradient(180deg,var(--panel3),var(--panel2)); border:1px solid var(--amber-line);
+    border-radius:12px; padding:18px 22px; position:relative; overflow:hidden}
+  .total::before{content:""; position:absolute; inset:0; background:radial-gradient(400px 120px at 90% 50%,var(--amber-dim),transparent 70%)}
+  .total .lab{font-family:var(--mono); font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); position:relative}
+  .total .big{font-family:var(--mono); font-weight:600; font-size:clamp(30px,6vw,44px); color:var(--amber);
+    line-height:1; position:relative}
+  .total .big small{font-size:.42em; color:var(--muted); margin-left:6px; font-weight:400}
+
+  /* ---- Result chips & ring diagram ---- */
+  .summary-grid{display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start}
+  @media(max-width:720px){.summary-grid{grid-template-columns:1fr}}
+  .chip{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+    padding:12px 15px; border-radius:10px; border:1px solid var(--line); background:var(--panel2); margin-bottom:9px}
+  .chip .cl{display:flex; flex-direction:column; gap:2px}
+  .chip .name{font-family:var(--disp); font-weight:600; font-size:15.5px}
+  .chip .desc{font-size:13px; color:var(--muted)}
+  .chip .val{font-family:var(--mono); font-weight:600; font-size:20px; white-space:nowrap}
+  .chip .val small{font-size:.6em; color:var(--muted); font-weight:400; margin-left:3px}
+  .chip.amber{border-left:3px solid var(--amber)} .chip.amber .val{color:var(--amber)}
+  .chip.red{border-left:3px solid var(--red)} .chip.red .val{color:var(--red)}
+  .chip.cyan{border-left:3px solid var(--cyan)} .chip.cyan .val{color:var(--cyan)}
+  .chip.violet{border-left:3px solid var(--violet)} .chip.violet .val{color:var(--violet)}
+  .ring-box{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:16px; text-align:center}
+  .ring-box svg{width:100%; height:auto; max-width:270px}
+  .ring-legend{font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:6px; text-align:left; line-height:1.7}
+  .ring-legend i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px}
+
+  /* ---- Inputs inside modules ---- */
+  .in-grid{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); margin:6px 0 4px}
+  .field label{display:block; font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:6px}
+  .m6grid .field label{min-height:3em; display:flex; align-items:flex-end}
+  .out{font-family:var(--mono); font-weight:600; font-size:17px; color:var(--cyan)}
+  .out.amber{color:var(--amber)} .out.red{color:var(--red)}
+  .result-line{display:flex; flex-wrap:wrap; gap:10px 26px; margin-top:14px; padding-top:14px; border-top:1px dashed var(--line2)}
+  .result-line .rl{display:flex; flex-direction:column; gap:3px}
+  .result-line .rl .k{font-family:var(--mono); font-size:12px; letter-spacing:.03em; text-transform:uppercase; color:var(--muted)}
+  .result-line .rl .v{font-family:var(--mono); font-weight:600; font-size:19px}
+
+  /* ---- Tables ---- */
+  .tbl-scroll{overflow-x:auto; margin-top:14px; border:1px solid var(--line); border-radius:10px}
+  table{width:100%; border-collapse:collapse; font-size:13.5px; min-width:440px}
+  th,td{text-align:left; padding:9px 13px; border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono); font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+    background:var(--panel2); position:sticky; top:0}
+  td{font-family:var(--mono); font-size:14px; color:var(--ink)}
+  td.desc-cell{font-family:var(--body); font-size:14.5px; color:var(--ink)}
+  tr:last-child td{border-bottom:none}
+  tr.hit{background:var(--amber-dim)}
+  tr.hit td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
+  tr.op-hit td{border-top:2px solid var(--red); border-bottom:2px solid var(--red); background:var(--red-dim)}
+  tr.op-hit td:first-child{border-left:2px solid var(--red)}
+  tr.op-hit td:last-child{border-right:2px solid var(--red)}
+  td.cell-click{cursor:pointer; transition:.12s}
+  td.cell-click:hover{background:var(--amber-dim); color:var(--amber)}
+  td.cell-click.picked{background:var(--amber); color:#fff}
+  td.cell-click.picked{font-weight:600}
+  .tag{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:5px; font-weight:600; letter-spacing:.03em}
+  .tag.g{background:var(--green-dim); color:var(--green)}
+  .tag.a{background:var(--amber-dim); color:var(--amber)}
+  .tag.r{background:var(--red-dim); color:var(--red)}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; vertical-align:1px}
+  .dot.g{background:var(--green)} .dot.a{background:var(--amber)} .dot.r{background:var(--red)}
+
+  .note{font-size:14px; color:var(--muted); margin-top:12px; padding-left:12px; border-left:2px solid var(--line2); line-height:1.5}
+  .note b{color:var(--ink)}
+  h4{font-family:var(--disp); font-weight:600; font-size:16px; margin:20px 0 4px; color:var(--ink)}
+  h4:first-child{margin-top:4px}
+  .src{font-family:var(--mono); font-size:11px; color:var(--muted2); margin-top:14px}
+  .src a{color:var(--muted); text-decoration:none; border-bottom:1px dotted var(--line2)}
+
+  .toggle{display:inline-flex; background:var(--panel2); border:1px solid var(--line2); border-radius:9px; padding:3px; gap:3px; margin-bottom:6px}
+  .toggle button{font-family:var(--disp); font-weight:600; font-size:13.5px; border:none; background:transparent;
+    color:var(--muted); padding:7px 14px; border-radius:6px; cursor:pointer}
+  .toggle button.on{background:var(--amber); color:#fff}
+
+  /* ---- Avattavat info-paneelit ---- */
+  details.info{border:1px solid var(--line); border-radius:10px; background:var(--panel2); margin-top:12px; overflow:hidden}
+  details.info + details.info{margin-top:10px}
+  details.info > summary{list-style:none; cursor:pointer; display:flex; align-items:center; gap:11px;
+    padding:12px 15px; font-family:var(--disp); font-weight:600; font-size:15px; color:var(--ink); user-select:none}
+  details.info > summary::-webkit-details-marker{display:none}
+  details.info > summary .plus{flex:0 0 auto; width:22px; height:22px; border-radius:6px;
+    border:1px solid var(--amber-line); background:var(--amber-dim); color:var(--amber);
+    display:grid; place-items:center; font-family:var(--mono); font-weight:600; font-size:15px; line-height:1; transition:.15s}
+  details.info[open] > summary .plus{background:var(--amber); color:#fff; border-color:var(--amber)}
+  details.info > summary .plus::before{content:"+"}
+  details.info[open] > summary .plus::before{content:"–"}
+  details.info > summary .st{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--muted2); font-weight:400}
+  details.info[open] > summary{border-bottom:1px solid var(--line)}
+  details.info .info-body{padding:4px 15px 15px}
+  details.info .info-body .tbl-scroll{margin-top:12px}
+  summary:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
+  footer{margin-top:50px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted2); font-size:12.5px}
+  .empty{color:var(--muted); font-size:13.5px; font-style:italic; padding:6px 0}
+
+  .grid-2{grid-template-columns:1fr 1fr}
+  .grid-3{grid-template-columns:repeat(3,1fr)}
+
+  /* ---------- Mobiili ---------- */
+  @media(max-width:600px){
+    body{font-size:15px}
+    .wrap{padding:0 13px calc(60px + env(safe-area-inset-bottom))}
+    header{padding:24px 0 18px}
+    section{margin-top:26px}
+    .card{padding:15px; border-radius:12px}
+
+    /* Otsikkorivi: aliteksti omalle rivilleen */
+    .sec-head{flex-wrap:wrap; gap:9px 12px}
+    .sec-sub{margin-left:0; text-align:left; max-width:100%; flex-basis:100%; order:3; font-size:12.5px}
+
+    /* Estä iOS-zoom kentissä (>=16px) */
+    select, input[type=number]{font-size:16px}
+
+    /* Ryhmäkortit pinoon */
+    .grid-2, .grid-3{grid-template-columns:1fr}
+    .summary-grid{grid-template-columns:1fr}
+
+    .total{padding:15px 17px}
+    .result-line{gap:12px 20px}
+    .result-line .rl .v{font-size:17px}
+    .out{font-size:16px}
+    details.info > summary{font-size:14px; padding:11px 13px; gap:9px}
+    details.info > summary .st{display:none}
+    .disclaimer{padding:11px 13px}
+  }
+  @media(max-width:380px){
+    .charge-row{grid-template-columns:1fr}
+    .charge-row .e-fac, .charge-row .e-tnt{grid-column:1 / -1}
+  }
+  /* ---- Työpöytä: kompakti taulukkoasettelu leveille näytöille ---- */
+  @media(min-width:760px){
+    .charge-row{grid-template-columns:minmax(110px,1fr) 86px 84px 66px 84px 34px; gap:9px;
+      border:none; background:none; border-radius:0; padding:0; margin-bottom:10px; align-items:center}
+    .charge-row.head{display:grid; margin-bottom:8px}
+    .charge-row.head span{font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted2)}
+    .charge-row .e-name{display:none}
+    .charge-row .e-sel, .charge-row .e-amt{grid-column:auto}
+    .charge-row .e-fragwrap{grid-column:auto; border:none; background:none; padding:0; gap:6px;
+      justify-content:flex-start; font-size:13px; color:var(--muted)}
+    .charge-row .e-fragwrap input{width:17px; height:17px}
+    .charge-row .rm{justify-self:auto}
+  }
+  @media(hover:none){ *{-webkit-tap-highlight-color:transparent} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Turvallisuus- ja suojaetäisyystyökalu <span style="margin-left:8px; background:var(--amber); color:#fff; border-radius:5px; padding:2px 8px; letter-spacing:.05em">VERSIO 22</span>
+      <button id="themeBtn" class="theme-toggle" type="button" aria-label="Vaihda teema">🌙 Tumma</button>
+    </div>
+    <h1>Räjähteiden <span>vaara-aluelaskuri</span></h1>
+    <p class="lede">Syötä tunnetut räjähdysainemäärät, muunna ne TNT-ekvivalentiksi ja laske sirpale-, paine-, tärinä- ja kraatterivaikutukset sekä suojarakenteiden mitoitus.</p>
+    <div class="disclaimer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2 1 21h22L12 2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.5" r="1.1" fill="currentColor"/></svg>
+      <p><b>Arvio suunnittelun tueksi.</b> Tulokset ovat empiirisiin kaavoihin perustuvia likiarvoja eivätkä takaa turvallisuutta. Todelliset vaikutukset riippuvat mm. panoksen muodosta, sijainnista, maastosta, säästä ja rakenteista. Noudata aina oman organisaatiosi ohjeistusta ja virallisia turvaetäisyyksiä.</p>
+    </div>
+  </header>
+
+  <!-- ============ PANOS ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">01</span>
+      <span class="sec-title">Panos ja TNT-muunnos</span>
+      <span class="sec-sub">Lisää yksi tai useampi räjähdysaine. Määrät summataan TNT-kiloiksi. Merkitse <b>Sirpale</b> niille aineille, joilla on sirpalevaikutus — vain ne huomioidaan sirpalevaara-alueessa.</span>
+    </div>
+    <div class="card">
+      <div class="charge-row head">
+        <span>Räjähdysaine</span><span>Määrä (kg)</span><span>Sirpale</span><span>Kerroin</span><span>= TNT (kg)</span><span></span>
+      </div>
+      <div id="rows"></div>
+      <button class="btn btn-add" id="addBtn">+ Lisää räjähdysaine</button>
+
+      <div class="total">
+        <div>
+          <div class="lab">Yhteensä TNT-ekvivalentti</div>
+          <div class="big"><span id="totalTnt">0</span><small>kg TNT</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ YHTEENVETO ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">◎</span>
+      <span class="sec-title">Vaara-alueiden yhteenveto</span>
+      <span class="sec-sub">Keskeiset säteet nykyisellä panoksella. Renkaat mittakaavassa keskenään.</span>
+    </div>
+    <div class="card">
+      <div class="summary-grid">
+        <div id="summaryChips"></div>
+        <div class="ring-box">
+          <svg id="ringSvg" viewBox="0 0 300 300" aria-label="Vaara-alueet mittakaavassa"></svg>
+          <div class="ring-legend" id="ringLegend"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 1 SIRPALE / PAINE ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">1</span>
+      <span class="sec-title">Sirpale- ja painevaara-alue</span>
+      <span class="sec-sub">Vaara-alueen säde panoksen kuoren tyypin mukaan.</span>
+    </div>
+    <div class="card">
+      <div class="formula">D = 0,3 · k · (2,2 · m)<sup>1/3</sup></div>
+      <div class="result-line">
+        <div class="rl"><span class="k">Sirpale · paksukuoriset (k=500)</span><span class="v out amber" id="r_frag">–</span></div>
+        <div class="rl"><span class="k">Paine · ohutkuoriset (k=300)</span><span class="v out cyan" id="r_blast">–</span></div>
+      </div>
+      <p class="note"><b>k = 500</b> paksukuorisille / sirpaloituville panoksille (kranaatit, tykistöammukset) — sirpalevaara-alue lasketaan vain niistä aineista, joissa <b>Sirpale</b> on valittuna. <b>k = 300</b> ohutkuorisille / lähinnä painevaikutteisille panoksille, koko TNT-määrästä. <b>m</b> = räjähdysainemäärä TNT-kiloina.</p>
+    </div>
+  </section>
+
+  <!-- ============ 2 PAINEVAURIO ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">2</span>
+      <span class="sec-title">Painevaurio ja ylipaineanalyysi</span>
+      <span class="sec-sub">Etäisyydellä vallitseva ylipaine ja sen vaikutukset.</span>
+    </div>
+
+    <div class="card">
+      <div class="formula">k = D / ((m · 2,2)<sup>1/3</sup> · 0,3)</div>
+      <h4>Yksittäinen kohde</h4>
+      <p class="note" style="margin-top:2px">Anna etäisyys suojattavaan kohteeseen. Työkalu laskee vaikutuskertoimen k ja poimii taulukosta lähimmän ylipainetason. Etäisyys ja "Vaara-alue annetulla k-arvolla" -kohdan <b>k</b> on kytketty: kumman tahansa muuttaminen päivittää toisen automaattisesti.</p>
+      <div class="in-grid">
+        <div class="field">
+          <label>Etäisyys kohteeseen D (m)</label>
+          <input type="number" id="m2_dist" value="100" min="0" step="1">
+        </div>
+        <div class="field">
+          <label>Vaikutuskerroin k</label>
+          <div class="out" id="m2_k" style="padding-top:8px">–</div>
+        </div>
+        <div class="field">
+          <label>Lähin ylipainetaso</label>
+          <div class="out amber" id="m2_p" style="padding-top:8px">–</div>
+        </div>
+      </div>
+      <div id="m2_effect" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <div class="formula">D = 0,3 · k · (2,2 · m)<sup>1/3</sup></div>
+      <h4>Vaara-alue annetulla k-arvolla</h4>
+      <p class="note" style="margin-top:2px">Anna vaikutuskerroin k, niin saat sitä vastaavan vaara-alueen säteen nykyisellä panoksella. Esim. k = 3,5 antaa välittömän vaara-alueen (100 PSI), k = 15 tärykalvon repeämän rajan (5 PSI) ja k = 300 lievimmän painetason (0,07 PSI).</p>
+      <div class="in-grid">
+        <div class="field">
+          <label>Vaikutuskerroin k</label>
+          <input type="number" id="m2k_k" value="3.5" min="0" step="0.5">
+        </div>
+        <div class="field">
+          <label>Vaara-alueen säde D</label>
+          <div class="out red" id="m2k_d" style="padding-top:8px">–</div>
+        </div>
+        <div class="field">
+          <label>Vastaava ylipainetaso</label>
+          <div class="out amber" id="m2k_p" style="padding-top:8px">–</div>
+        </div>
+      </div>
+      <div id="m2k_effect" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <p class="note" style="margin-top:0">Tausta-aineisto avautuu tarvittaessa napauttamalla. Näin sivu pysyy lyhyempänä.</p>
+
+      <details class="info">
+        <summary><span class="plus"></span> Ylipainetaulukko panokselle <span class="st">etäisyys per ylipainetaso</span></summary>
+        <div class="info-body">
+          <p class="note" style="margin-top:6px">Etäisyys, jolla kukin ylipainetaso saavutetaan nykyisellä panoksella (D = 0,3 · K · (2,2·m)<sup>1/3</sup>).</p>
+          <div class="tbl-scroll">
+            <table id="opTable">
+              <thead><tr><th>PSI</th><th>kPa</th><th>bar</th><th>K</th><th>Etäisyys (m)</th><th>Vaikutus</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <details class="info">
+        <summary><span class="plus"></span> Ihmiseen kohdistuvat raja-arvot <span class="st">kuulo · keuhko · tappavuus</span></summary>
+        <div class="info-body">
+          <div class="tbl-scroll">
+            <table id="humanTable">
+              <thead><tr><th>Vaikutus</th><th>PSI</th><th>kPa</th><th>bar</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="note" id="humanNotes" style="line-height:1.9"></p>
+        </div>
+      </details>
+
+      <details class="info">
+        <summary><span class="plus"></span> Rakenteisiin ja ajoneuvoihin kohdistuvat vauriot <span class="st">kohde · vaurio · ylipaine · K</span></summary>
+        <div class="info-body">
+          <div class="tbl-scroll">
+            <table id="structTable">
+              <thead><tr><th>Kohde</th><th>Vaurio</th><th>Ylipaine PSI</th><th>kPa</th><th>K-kerroin</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ 3 VÄLITÖN VAARA-ALUE ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">3</span>
+      <span class="sec-title">Välitön vaara-alue</span>
+      <span class="sec-sub">Painevaurio (100 PSI) ja tulipallon polttovaikutus.</span>
+    </div>
+    <div class="card">
+      <div class="formula">Paine (K=3,5 ≈ 100 PSI): D = 0,3 · 3,5 · (2,2 · m)<sup>1/3</sup></div><br>
+      <div class="formula">Tulipallo: r = 1,88 · m<sup>0,325</sup></div>
+      <div class="result-line">
+        <div class="rl"><span class="k">Painevaurion säde (100 PSI)</span><span class="v out red" id="r_imm">–</span></div>
+        <div class="rl"><span class="k">Tulipallon polttosäde</span><span class="v out amber" id="r_fire">–</span></div>
+        <div class="rl"><span class="k">Välitön vaara-alue (suurempi)</span><span class="v out red" id="r_immmax">–</span></div>
+      </div>
+      <p class="note">Kaava huomioi vain paineen aiheuttaman vaurion. Sirpalevaara ulottuu tyypillisesti tätä kauemmas (ks. moduuli 1).</p>
+
+      <details class="info">
+        <summary><span class="plus"></span> Viitteelliset evakuointietäisyydet (DHS / ATF) <span class="st">rakennus · ulko</span></summary>
+        <div class="info-body">
+          <p class="note" style="margin-top:6px">Julkaistuja suunnitteluetäisyyksiä eri panoskoille. Rivi, joka vastaa lähinnä nykyistä TNT-määrää, on korostettu.</p>
+          <div class="tbl-scroll">
+            <table id="standoffTable">
+              <thead><tr><th>Uhkakuva</th><th>TNT (kg)</th><th>Rakennus­evakuointi</th><th>Ulkoevakuointi</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="src">Lähde: DHS/ATF Bomb Threat Stand-Off -taulukko. Ulkoetäisyyttä hallitsee sirpaleiden lentomatka tai lasin rikkoutumisen vaara-alue.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ 4 TÄRINÄ ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">4</span>
+      <span class="sec-title">Tärinävaikutus</span>
+      <span class="sec-sub">Tärinäarvo etäisyydellä ja vauriokynnysten etäisyydet.</span>
+    </div>
+    <div class="card">
+      <div class="formula">x = m / r<sup>1,5</sup></div>
+      <div class="in-grid">
+        <div class="field">
+          <label>Etäisyys rakennukseen r (m)</label>
+          <input type="number" id="m4_r" value="50" min="0" step="1">
+        </div>
+        <div class="field">
+          <label>Tärinäarvo x kohteessa</label>
+          <div class="out amber" id="m4_x" style="padding-top:8px">–</div>
+        </div>
+        <div class="field">
+          <label>Arvioitu rakennevaikutus</label>
+          <div class="out" id="m4_eff" style="padding-top:8px; font-size:14px">–</div>
+        </div>
+      </div>
+
+      <h4>Vauriokynnysten etäisyydet nykyisellä panoksella</h4>
+      <div class="tbl-scroll">
+        <table id="vibTable">
+          <thead><tr><th>Vaikutus tavanomaiseen rakennukseen</th><th>Raja-arvo x</th><th>Etäisyys (m)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note">Kynnyksen sisäpuolella (lähempänä kuin taulukon etäisyys) tärinäarvo ylittää raja-arvon.</p>
+    </div>
+  </section>
+
+  <!-- ============ 5 KRAATTERI ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">5</span>
+      <span class="sec-title">Räjähdyskuopan säde</span>
+      <span class="sec-sub">Kraatterin koko maalajin mukaan – molempiin suuntiin.</span>
+    </div>
+    <div class="card">
+      <div class="field" style="max-width:340px; margin-bottom:14px">
+        <label>Maalaji / lujuuskerroin y</label>
+        <select id="m5_soil">
+          <option value="0.8">Pehmeähköt maalajit (hiekka, multa, sora, löyhä moreeni) — y = 0,8</option>
+          <option value="1.2">Kovahkot maalajit (kivinen moreeni, sorapintainen tie) — y = 1,2</option>
+          <option value="2">Erittäin kovat maalajit (routaantunut moreeni, kestopäällyste) — y = 2</option>
+        </select>
+      </div>
+
+      <div class="in-grid grid-2">
+        <div class="card" style="background:var(--panel2); margin:0">
+          <div class="formula">r = (m / y)<sup>1/3</sup></div>
+          <p class="note" style="margin-top:8px">r = räjähdyskuopan säde metreissä.<br>y = lujuuskerroin<br>m = räjähdemäärä (TNT-kg)</p>
+          <div class="result-line" style="border:none; padding-top:8px; margin-top:6px">
+            <div class="rl"><span class="k">Kuopan säde</span><span class="v out amber" id="m5_r">–</span></div>
+          </div>
+        </div>
+        <div class="card" style="background:var(--panel2); margin:0">
+          <div class="formula">m = y · r<sup>3</sup></div>
+          <p class="note" style="margin-top:8px">Havaitusta kuopan säteestä takaisin panokseen.</p>
+          <div class="field" style="margin-top:8px">
+            <label>Havaittu kuopan säde r (m)</label>
+            <input type="number" id="m5_rin" value="3" min="0" step="0.1">
+          </div>
+          <div class="result-line" style="border:none; padding-top:8px; margin-top:2px">
+            <div class="rl"><span class="k">Arvioitu panos</span><span class="v out cyan" id="m5_m">–</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="note">Eteen- ja taaksepäin-kaavat ovat nyt toistensa käänteisfunktiot (r = (m/y)^(1/3) ↔ m = y · r³), joten ne antavat keskenään yhtäpitävät tulokset.</p>
+    </div>
+  </section>
+
+  <!-- ============ 6 HIEKKASÄKKIMUURI ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">6</span>
+      <span class="sec-title">Hiekkasäkkimuurin mitoitus</span>
+      <span class="sec-sub">Korkeus ja leveys näköyhteydestä, paksuus uhkatason mukaan.</span>
+    </div>
+
+    <div class="card">
+      <div class="formula">h₁ = (r₁ · h₂) / r₂</div>&nbsp;&nbsp;
+      <div class="formula">w₁ = (r₁ · w₂) / r₂</div>
+      <h4>Korkeus ja leveys (näköyhteyden katkaisu)</h4>
+      <p class="note" style="margin-top:2px">Muuri katkaisee näköyhteyden – ja siten suoran sirpalelentoradan – panoksen ja suojattavan kohteen väliltä. Leveys lasketaan samalla periaatteella kuin korkeus, kohteen leveydestä.</p>
+      <div class="in-grid m6grid">
+        <div class="field">
+          <label>r₁ — etäisyys muuriin (m)</label>
+          <input type="number" id="m6_r1" value="2" min="0" step="0.1">
+        </div>
+        <div class="field">
+          <label>r₂ — etäisyys kohteesta (m)</label>
+          <input type="number" id="m6_r2" value="10" min="0" step="0.1">
+        </div>
+        <div class="field">
+          <label>h₂ — kohteen korkeus (m)</label>
+          <input type="number" id="m6_h2" value="3" min="0" step="0.1">
+        </div>
+        <div class="field">
+          <label>w₂ — kohteen leveys (m)</label>
+          <input type="number" id="m6_w2" value="4" min="0" step="0.1">
+        </div>
+      </div>
+      <div class="result-line">
+        <div class="rl"><span class="k">Tarvittava korkeus h₁</span><span class="v out green" id="m6_h1">–</span></div>
+        <div class="rl"><span class="k">Tarvittava leveys w₁</span><span class="v out green" id="m6_w1">–</span></div>
+      </div>
+      <p class="note">r₁ vastaa usein räjähdyskuopan sädettä (ks. moduuli 5). Leveys w₁ on muurin vähimmäisleveys, jotta kohde jää kokonaan katveeseen; käytännössä lisää reilu marginaali reunoille.</p>
+    </div>
+
+    <div class="card">
+      <h4>Tarvittava paksuus uhkatason mukaan</h4>
+      <p class="note" style="margin-top:2px">Valitse uhkataso tai asevaikutus, niin näet vaaditun rakennevahvuuden hiekkasäkeillä, vallissa ja tiiliseinänä.</p>
+      <div class="field" style="max-width:520px; margin-bottom:6px">
+        <label>Uhkataso / asevaikutus</label>
+        <select id="m6_threat"></select>
+      </div>
+      <div class="result-line" id="m6_prot"></div>
+      <p class="note">Hiekka-arvot muodossa <b>kuiva / märkä</b>. "&lt;" tarkoittaa "vähintään". Uhkatasojen A–E ja 1–5 selitykset alla olevassa matriisissa.</p>
+
+      <details class="info">
+        <summary><span class="plus"></span> Suojavahvuudet — koko taulukko <span class="st">säkki · valli · tiili</span></summary>
+        <div class="info-body">
+          <div class="tbl-scroll">
+            <table id="protTable">
+              <thead><tr><th>Uhkataso / asevaikutus</th><th>Säkki­kerroksia</th><th>Rakenteen paksuus (cm)</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="src">Taulukko käyttäjän toimittaman suojausohjeen mukainen. Sarakkeiden ryhmittely tulkittu lähdemateriaalista.</p>
+        </div>
+      </details>
+
+      <details class="info">
+        <summary><span class="plus"></span> Uhkatasomatriisi A–E × 1–5 <span class="st">asevaikutukset</span></summary>
+        <div class="info-body">
+          <p class="note" style="margin-top:6px"><b>A</b> pienet/keskikaliiperiset aseet · <b>B</b> singot ja kiväärikranaatit · <b>C</b> raketin-, heittimen- ja tykistökranaattien sirpalevaikutus · <b>D</b> henkilökuljetteiset panokset (IED) · <b>E</b> ajoneuvopanokset (VBIED). Taso 1 = pienin, 5 = suurin uhka. Napauta solua nähdäksesi tarvittavan suojavahvuuden.</p>
+          <div class="tbl-scroll">
+            <table id="threatTable">
+              <thead><tr><th>Taso</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="threatResult" class="note" style="margin-top:12px; border-left-color:var(--amber); color:var(--ink)">Napauta matriisin solua.</div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    Räjähteiden vaara-aluelaskuri · Laskennassa käytetään käyttäjän antamia empiirisiä kaavoja ja TNT-verrannaiskertoimia.
+    Kaikki tulokset ovat suunnittelun tukena käytettäviä arvioita. Yksi tiedosto, toimii ilman verkkoyhteyttä (viitetaulukot ja fontit vaativat verkon).
+  </footer>
+
+</div>
+
+<script>
+/* ---------- Data ---------- */
+const EXPLOSIVES = [
+  ["TNT",1.00],["AMATOLI 50/50",0.97],["AMATOLI 60/40",0.95],["AMMONIUMNITRAATTI",0.56],
+  ["AMMONIUMPIKRAATTI",0.85],["ANFO",0.82],["BARONAL",1.11],["COMPOSITION A-3",1.09],
+  ["COMPOSITION B",1.11],["COMPOSITION C-3",1.05],["COMPOSITION C-4",1.37],["DATB",0.87],
+  ["DBX",1.18],["DYNAMIITTI",0.90],["DYNAMIITTI GELATIINI (20% voima)",0.70],
+  ["DYNAMIITTI GELATIINI (50% voima)",0.80],["EDNATOL 55/45",1.08],["H-6",1.38],
+  ["HBX-1",1.17],["HBX-3",1.14],["HEKSOGEENI/RDX",1.19],["HEKSOTOLI 60/40",1.04],
+  ["HEKSOTOLI 70/30",1.14],["HEKSOTOLI 75/25",1.11],["MINOL II",1.20],["OCTOL 70/30",1.14],
+  ["OCTOL 75/25",1.02],["PBXN-4",0.83],["PENTOLITE 50/50 valettu",1.38],
+  ["PENTOLITE 90/10 valettu",1.42],["PENTRIITTI (PENO)",1.27],["PICRATOL 52/48",0.90],
+  ["TETRYTOLI 75/25",1.06],["TETRYYLI",1.07],["TORPEX",1.23],["TRITONAL 80/20",1.07]
+];
+
+// Ylipainetaulukko: [PSI, kPa, K]
+const OP = [
+  [0.07,0.48,300],[0.1,0.69,250],[0.5,3.45,75],[1,6.9,45],[2,13.79,30],[3,20.69,20],
+  [4,27.58,18],[5,34.48,15],[6,41.37,14],[7,48.27,13],[8,55.16,12],[9,62.06,11],
+  [10,68.95,10],[15,103.43,8],[20,137.9,7],[30,206.85,6],[40,275.8,5],[60,413.7,4],
+  [100,689.5,3.5],[200,1379.5,3]
+];
+
+// Ihmisvaikutusten raja-arvot [nimi, psiMin, psiMax(null jos yksi)]
+// Ihmiseen kohdistuvat raja-arvot – käyttäjän kuvan mukaan: [vaikutus, PSI-teksti, kPa-teksti, tag]
+const HUMAN = [
+  ["Raja-arvo väliaikaiselle kuulovauriolle", "0,2", "1,38", "a"],
+  ["Tärykalvon repeäminen — raja-arvo", "5", "34,5", "a"],
+  ["Tärykalvon repeäminen — 50 % todennäköisyys", "15", "103,4", "r"],
+  ["Keuhkovaurio — raja-arvo", "30–40", "207–276", "r"],
+  ["Keuhkovaurio — 50 % todennäköisyys", "80", "551", "r"],
+  ["Tappava — raja-arvo", "100–120", "690–827", "r"],
+  ["Tappava — 50 % todennäköisyys", "130–180", "896–1241", "r"],
+  ["Tappava — lähes 100 % todennäköisyys", "200–250", "1379–1724", "r"]
+];
+// Kuvan lisähuomiot (ihmisvaikutukset)
+const HUMAN_NOTES = [
+  "0,07 PSI painetta ihminen sietää hetkellisesti.",
+  "0,2–2 PSI / 1,5–16 kPa: tilapäinen kuulon menetys (140–180 dB).",
+  "10 PSI / 68 kPa: keuhkorepeämä.",
+  "27 PSI / 186 kPa: 1 % todennäköisyys kuolemalle."
+];
+
+// Rakenne- ja ajoneuvovauriot [nimi, psiMin, psiMax, tag]
+// Rakenne-/ajoneuvovauriot (käyttäjän kuvan mukaan): { kohde, rows:[[vaurio, psi, kpa, K, tag]] }
+const STRUCT = [
+  {kohde:"Ajoneuvot", rows:[["Kumoon kaatuminen","0,5–1,5","3,4–10,3","75","a"]]},
+  {kohde:"Aaltopelti tai alumiinipaneeli", rows:[["Irtoaminen kiinnikkeistä, liitosvaurioita","1–2","6,9–13,8","45","a"]]},
+  {kohde:"Tiiliseinä 8–12 tuumaa", rows:[["Rakoilua ja halkeilua","7–8","48,3–55,2","13","a"]]},
+  {kohde:"Puiset sähköpylväät", rows:[["Katkeaminen","5","34,5","15","r"]]},
+  {kohde:"Maanpinnalla olevat varastosäiliöt", rows:[
+    ["Lievä vaurio","0,5–1,5","3,4–10,3","","a"],
+    ["Repeämä","3–4","20,7–27,8","","r"],
+    ["Tuhoutuminen","8–10","55,2–69,0","","r"]]},
+  {kohde:"Ajoneuvot ja perävaunut", rows:[["Tuhoutuminen","10–14","69,0–96,5","12","r"]]},
+  {kohde:"Kiinteät generaattorit ja kompressorit", rows:[
+    ["Lievä vaurio","6–8","41,4–55,2","10","a"],
+    ["Irtoaminen kiinnikkeistä *","8–10","55,2–69,0","","a"],
+    ["Tuhoutuminen","14–20","96,5–137,9","8","r"]]},
+  {kohde:"Rautavahvisteiset mastot", rows:[["Kaatuminen / sortuminen","30","206,9","6","r"]]},
+  {kohde:"Ikkunat", rows:[["Särkyminen","0,15–0,75","1–5","75","a"]]},
+  {kohde:"Ovet ja kevyet väliseinät", rows:[["Vaurioituminen","0,75–1,5","5–10","45","a"]]},
+  {kohde:"Puurakenteet", rows:[["Vaurioituminen, ei sortumia","1,5–2,9","10–20","20","a"]]},
+  {kohde:"Ovet ja kevyet väliseinät, katot", rows:[["Rikkoutuminen","1,5–2,9","10–20","20","r"]]},
+  {kohde:"Puurakenteet, kevyet väliseinät", rows:[["Sortuminen, seinäelementit putoilevat","2,9–4,3","20–30","18","r"]]},
+  {kohde:"Muuratut tiiliseinät", rows:[["Sortuminen","4,3–7,2","30–50","13","r"]]},
+  {kohde:"TB-/teräsrungot, vahvat kellarit", rows:[["Säilyvät","4,3–7,2","30–50","13","g"]]},
+  {kohde:"Avosähköjohdot", rows:[["Vaurioituminen","7,2–10,1","50–70","10","a"]]},
+  {kohde:"Maassa olevat ilma-alukset", rows:[["Vaurioituminen merkittävästi","1,5–2","10–15","30","r"]]}
+];
+
+// DHS/ATF stand-off [nimi, tntKg, rakennus m, ulko m]
+const STANDOFF = [
+  ["Putkipommi", 2.3, 21, 259],
+  ["Itsemurhaliivi", 9, 34, 415],
+  ["Salkku- / matkalaukkupommi", 23, 46, 564],
+  ["Pieni henkilöauto", 227, 98, 457],
+  ["Henkilöauto", 454, 122, 534],
+  ["Paketti- / tavara-auto", 1814, 195, 838],
+  ["Pieni muutto- / jakeluauto", 4536, 263, 1143],
+  ["Muutto- / vesiauto", 13608, 375, 1982],
+  ["Puoliperävaunu", 27216, 457, 2134]
+];
+
+const VIB = [
+  ["Pieniä rakoja, rappauksen putoamista", 0.06],
+  ["Raon muodostumista", 0.12],
+  ["Huomattavaa raon muodostumista", 0.25]
+];
+
+const PSI_KPA = 6.89476;
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+function fmt(n, dec=1){
+  if(n===null||n===undefined||!isFinite(n)) return "–";
+  return n.toLocaleString('fi-FI',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+// Räjähdemäärän (kg) muotoilu: enemmän desimaaleja pienille arvoille, ei turhia nollia.
+// Esim. 0,44 -> "0,44", 0,5016 -> "0,502", 11,4 -> "11,4", 950 -> "950".
+function fmtKg(n){
+  if(n===null||n===undefined||!isFinite(n)) return "–";
+  const a=Math.abs(n);
+  const dec = a>=100 ? 1 : a>=10 ? 2 : a>=1 ? 2 : 3;
+  return n.toLocaleString('fi-FI',{minimumFractionDigits:0, maximumFractionDigits:dec});
+}
+function psiToKpa(p){return p*PSI_KPA;}
+function kpaToBar(k){return k/100;}
+function rng(min,max,dec){ return max==null ? fmt(min,dec) : fmt(min,dec)+"–"+fmt(max,dec); }
+// Vaara-alue pyöristetään ylöspäin lähimpään 50 metriin; tarkka arvo suluissa.
+function ceil50(x){ return Math.ceil(x/50)*50; }
+function zoneTxt(x){ if(!isFinite(x)||x<=0) return "–"; return fmt(ceil50(x),0)+" m ("+fmt(x,1)+" m)"; }
+// Välitön vaara-alue ja tulipallon säde: pyöristys ylös lähimpään metriin; tarkka arvo suluissa.
+function zoneTxt1(x){ if(!isFinite(x)||x<=0) return "–"; return fmt(Math.ceil(x),0)+" m ("+fmt(x,1)+" m)"; }
+
+/* ---------- Charge builder ---------- */
+const rowsEl = $("#rows");
+let rowId = 0;
+function buildOptions(sel){
+  EXPLOSIVES.forEach(([n,f])=>{
+    const o=document.createElement('option'); o.value=f; o.textContent=n+' ('+fmt(f,2)+')'; o.dataset.name=n; sel.appendChild(o);
+  });
+}
+function addRow(){
+  const id = rowId++;
+  const row = document.createElement('div');
+  row.className='charge-row'; row.dataset.id=id;
+  row.innerHTML = `
+    <span class="e-name"></span>
+    <select class="e-sel"></select>
+    <input type="number" class="e-amt" value="" placeholder="0" min="0" step="0.1">
+    <label class="e-fragwrap"><input type="checkbox" class="e-frag"><span>Sirpale</span></label>
+    <span class="cell-ro e-fac">–</span>
+    <span class="cell-tnt e-tnt">0 kg</span>
+    <button class="rm" title="Poista">×</button>`;
+  rowsEl.appendChild(row);
+  buildOptions(row.querySelector('.e-sel'));
+  row.querySelector('.e-sel').addEventListener('change', recompute);
+  row.querySelector('.e-amt').addEventListener('input', recompute);
+  row.querySelector('.e-frag').addEventListener('change', recompute);
+  row.querySelector('.rm').addEventListener('click', ()=>{ row.remove(); recompute(); });
+  recompute();
+}
+$("#addBtn").addEventListener('click', addRow);
+
+// Laskee sekä kokonaismäärän että sirpalevaikutteisen määrän (valintaruutu) TNT-kiloina.
+function computeCharge(){
+  let total=0, frag=0;
+  rowsEl.querySelectorAll('.charge-row').forEach(r=>{
+    const sel=r.querySelector('.e-sel');
+    const f=parseFloat(sel.value)||0;
+    const a=parseFloat(r.querySelector('.e-amt').value)||0;
+    const tnt=f*a;
+    const name = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.name : '';
+    r.querySelector('.e-name').textContent = name ? name+' · kerroin '+fmt(f,2) : '';
+    r.querySelector('.e-fac').textContent = f? '× '+fmt(f,2) : '–';
+    r.querySelector('.e-tnt').textContent = fmtKg(tnt)+' kg';
+    total+=tnt;
+    if(r.querySelector('.e-frag').checked) frag+=tnt;
+  });
+  return {total, frag};
+}
+function totalTNT(){ return computeCharge().total; }
+function fragTNT(){ return computeCharge().frag; }
+
+/* ---------- Core recompute ---------- */
+function recompute(){
+  const {total:m, frag:mf} = computeCharge();
+  $("#totalTnt").textContent = fmtKg(m);
+  const cbrt = Math.cbrt(2.2*m);
+  const cbrtFrag = Math.cbrt(2.2*mf);
+
+  // Moduuli 1: sirpale (k=500) vain sirpalevaikutteisesta massasta, paine (k=300) koko massasta
+  const rFrag = 0.3*500*cbrtFrag;
+  const rBlast = 0.3*300*cbrt;
+  $("#r_frag").textContent = mf>0? zoneTxt(rFrag):'–';
+  $("#r_blast").textContent = m>0? zoneTxt(rBlast):'–';
+
+  // Moduuli 3
+  const rImm = 0.3*3.5*cbrt;
+  const rFire = 1.88*Math.pow(m,0.325);
+  $("#r_imm").textContent = m>0? zoneTxt1(rImm):'–';
+  $("#r_fire").textContent = m>0? zoneTxt1(rFire):'–';
+  $("#r_immmax").textContent = m>0? zoneTxt1(Math.max(rImm,rFire)):'–';
+
+  updateSummary(m, {rFrag,rBlast,rImm,rFire,mf});
+  updateOpTable(m, cbrt);
+  // Panosmäärän muuttuessa palautetaan moduulin 2 kentät oletusarvoihin
+  $("#m2_dist").value = 100;
+  $("#m2k_k").value = 3.5;
+  updateModule2(m, cbrt);
+  updateModule2k(m, cbrt);
+  updateStandoff(m);
+  updateModule4();
+  updateModule5(m);
+  updateModule6();
+}
+
+/* ---------- Summary chips + ring diagram ---------- */
+function chip(cls,name,desc,val,unit){
+  return `<div class="chip ${cls}"><div class="cl"><span class="name">${name}</span><span class="desc">${desc}</span></div>
+    <span class="val">${val}<small>${unit||''}</small></span></div>`;
+}
+function updateSummary(m, r){
+  const box=$("#summaryChips");
+  if(m<=0){ box.innerHTML='<p class="empty">Syötä panos yllä nähdäksesi vaara-alueet.</p>'; drawRings(0,{}); return; }
+  const fragChip = (r.mf>0)
+    ? chip('amber','Sirpalevaara-alue','k=500, paksukuoriset · tarkka '+fmt(r.rFrag,1)+' m', fmt(ceil50(r.rFrag),0),' m')
+    : chip('amber','Sirpalevaara-alue','ei sirpalevaikutteista panosta valittuna','–','');
+  box.innerHTML =
+    fragChip+
+    chip('cyan','Painevaara-alue','k=300, ohutkuoriset · tarkka '+fmt(r.rBlast,1)+' m', fmt(ceil50(r.rBlast),0),' m')+
+    chip('red','Välitön vaara-alue','paine 100 PSI · tarkka '+fmt(r.rImm,1)+' m', fmt(Math.ceil(r.rImm),0),' m')+
+    chip('violet','Tulipallon polttosäde','r = 1,88·m^0,325 · tarkka '+fmt(r.rFire,1)+' m', fmt(Math.ceil(r.rFire),0),' m');
+  drawRings(m,r);
+}
+function drawRings(m,r){
+  const svg=$("#ringSvg"), leg=$("#ringLegend");
+  if(m<=0){ svg.innerHTML=''; leg.innerHTML=''; return; }
+  const items=[
+    {r:r.rFrag,c:'var(--ring-amber)',lab:'Sirpale (k500)'},
+    {r:r.rBlast,c:'var(--ring-cyan)',lab:'Paine (k300)'},
+    {r:r.rImm,c:'var(--ring-red)',lab:'Välitön 100 PSI'},
+    {r:r.rFire,c:'var(--ring-violet)',lab:'Tulipallo'}
+  ].filter(it=>it.r>0).sort((a,b)=>b.r-a.r);
+  if(!items.length){ svg.innerHTML=''; leg.innerHTML=''; return; }
+  const maxR=items[0].r, cx=150, cy=150, maxPx=132;
+  let s='';
+  // taustaruudukko
+  s+=`<circle cx="${cx}" cy="${cy}" r="${maxPx}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+  items.forEach(it=>{
+    const px = maxR>0 ? Math.max(2, it.r/maxR*maxPx) : 0;
+    s+=`<circle cx="${cx}" cy="${cy}" r="${px}" fill="none" stroke="${it.c}" stroke-width="1.6" opacity="0.9"/>`;
+  });
+  s+=`<circle cx="${cx}" cy="${cy}" r="3.2" fill="var(--amber)"/>`;
+  svg.innerHTML=s;
+  leg.innerHTML=items.map(it=>`<div><i style="background:${it.c}"></i>${it.lab}: ${fmt(it.r,1)} m</div>`).join('');
+}
+
+/* ---------- Moduuli 2: ylipainetaulukko ---------- */
+// Vaikutustekstit pohjautuvat vain käyttäjän kuvan raja-arvoihin ja huomioihin.
+function effectForPsi(psi){
+  if(psi<0.2)  return ["Siedettävä hetkellisesti","g"];
+  if(psi<5)    return ["Väliaikaisen kuulovaurion raja-arvo","a"];
+  if(psi<10)   return ["Tärykalvon repeämän raja-arvo","a"];
+  if(psi<15)   return ["Keuhkorepeämä","r"];
+  if(psi<27)   return ["Tärykalvon repeämä 50 %","r"];
+  if(psi<30)   return ["1 % kuolemantodennäköisyys","r"];
+  if(psi<80)   return ["Keuhkovaurion raja-arvo","r"];
+  if(psi<100)  return ["Keuhkovaurio 50 %","r"];
+  if(psi<130)  return ["Tappavuuden raja-arvo","r"];
+  if(psi<200)  return ["Kuolleisuus 50 %","r"];
+  return ["Kuolleisuus lähes 100 %","r"];
+}
+function updateOpTable(m, cbrt){
+  const tb=$("#opTable tbody");
+  tb.innerHTML = OP.map(([psi,kpa,K],i)=>{
+    const d = m>0 ? 0.3*K*cbrt : null;
+    const [eff,tag]=effectForPsi(psi);
+    return `<tr data-op="${i}">
+      <td>${fmt(psi,2)}</td><td>${fmt(kpa,2)}</td><td>${fmt(kpaToBar(kpa),3)}</td><td>${fmt(K,1)}</td>
+      <td style="color:var(--amber)">${m>0?fmt(d,1):'–'}</td>
+      <td class="desc-cell"><span class="tag ${tag}">${eff}</span></td></tr>`;
+  }).join('');
+}
+
+/* ---------- Moduuli 2: yksittäinen kohde ---------- */
+// Poimii ylipainetaulukosta rivin, jonka K on lähinnä laskettua k-arvoa.
+function nearestOpByK(k){
+  let best=OP[0], bd=Infinity;
+  OP.forEach(row=>{ const d=Math.abs(Math.log(row[2])-Math.log(k)); if(d<bd){bd=d; best=row;} });
+  return best;
+}
+function nearestOpIdxByK(k){
+  let best=0, bd=Infinity;
+  OP.forEach((row,i)=>{ const d=Math.abs(Math.log(row[2])-Math.log(k)); if(d<bd){bd=d; best=i;} });
+  return best;
+}
+// Korostaa lähimmän ylipainetason rivin punaisella kehyksellä
+function highlightOp(k){
+  document.querySelectorAll('#opTable tr.op-hit').forEach(tr=>tr.classList.remove('op-hit'));
+  if(!isFinite(k)||k<=0) return;
+  const tr=$(`#opTable tr[data-op="${nearestOpIdxByK(k)}"]`);
+  if(tr) tr.classList.add('op-hit');
+}
+// PSI-tekstistä (esim. "30–40", "0,15–0,75", "5") edustava lukuarvo
+function psiMid(str){
+  const parts=String(str).replace(/[<>≈]/g,'').replace(/\s/g,'').split('–')
+    .map(s=>parseFloat(s.replace(',','.'))).filter(v=>isFinite(v));
+  return parts.length ? parts.reduce((a,b)=>a+b,0)/parts.length : NaN;
+}
+// Korostaa taulukosta rivin, jonka PSI on lähinnä laskettua ylipainetta
+function highlightNearestPsi(tableSel, psi){
+  document.querySelectorAll(`${tableSel} tr.op-hit`).forEach(tr=>tr.classList.remove('op-hit'));
+  if(!isFinite(psi)||psi<=0) return;
+  let best=null, bd=Infinity;
+  document.querySelectorAll(`${tableSel} tbody tr`).forEach(tr=>{
+    const v=parseFloat(tr.dataset.psi);
+    if(isFinite(v)){ const d=Math.abs(Math.log(v)-Math.log(psi)); if(d<bd){bd=d; best=tr;} }
+  });
+  if(best) best.classList.add('op-hit');
+}
+// Korostaa kaikki kolme taulukkoa laskettua tulosta lähimpään riviin
+function highlightTables(k){
+  highlightOp(k);
+  const psi = (isFinite(k)&&k>0) ? nearestOpByK(k)[0] : 0;
+  highlightNearestPsi('#humanTable', psi);
+  highlightNearestPsi('#structTable', psi);
+}
+function updateModule2(m, cbrt){
+  const D=parseFloat($("#m2_dist").value)||0;
+  const effBox=$("#m2_effect");
+  if(m<=0 || D<=0){
+    $("#m2_k").textContent='–'; $("#m2_p").textContent='–'; effBox.innerHTML=''; highlightTables(0); return;
+  }
+  const k = D / (Math.cbrt(m*2.2)*0.3);
+  $("#m2_k").textContent = fmt(k,2);
+  highlightTables(k);
+  const [psi,kpa,K] = nearestOpByK(k);
+  let bound='';
+  if(k>OP[0][2]) bound=' · todellinen ylipaine tätäkin pienempi (k yli taulukon)';
+  else if(k<OP[OP.length-1][2]) bound=' · todellinen ylipaine tätäkin suurempi (k alle taulukon)';
+  $("#m2_p").textContent = fmt(psi,2)+' PSI';
+  const [eff,tag]=effectForPsi(psi);
+  const cls = tag==='r'?'red':(tag==='a'?'amber':'cyan');
+  // Tekstitulostus lähimmästä taulukkoarvosta
+  effBox.innerHTML = `<div class="chip ${cls}" style="margin:0">
+    <div class="cl"><span class="name">Lähin taulukkoarvo: ${fmt(psi,2)} PSI</span>
+    <span class="desc">${fmt(kpa,2)} kPa · ${fmt(kpaToBar(kpa),3)} bar · K=${fmt(K,1)} · laskettu k=${fmt(k,2)}${bound}</span></div>
+    <span class="val" style="font-size:14px; text-align:right; max-width:52%">${eff}</span></div>
+    <p class="note" style="margin-top:10px">Etäisyydellä <b>${fmt(D,0)} m</b> panoksesta (<b>${fmtKg(m)} kg TNT</b>) laskettu vaikutuskerroin on <b>k = ${fmt(k,2)}</b>, jota lähinnä oleva taulukkoarvo on <b>${fmt(psi,2)} PSI</b> (${fmt(kpa,1)} kPa / ${fmt(kpaToBar(kpa),3)} bar). Arvioitu vaikutus: ${eff.toLowerCase()}.</p>`;
+}
+
+/* ---------- Moduuli 2b: vaara-alue annetulla k-arvolla ---------- */
+function updateModule2k(m, cbrt){
+  const k=parseFloat($("#m2k_k").value)||0;
+  const effBox=$("#m2k_effect");
+  if(m<=0 || k<=0){
+    $("#m2k_d").textContent='–'; $("#m2k_p").textContent='–'; effBox.innerHTML=''; highlightTables(0); return;
+  }
+  const D = 0.3*k*cbrt;              // vaara-alueen säde
+  $("#m2k_d").textContent = zoneTxt1(D);
+  highlightTables(k);
+  const [psi,kpa,K] = nearestOpByK(k);
+  $("#m2k_p").textContent = fmt(psi,2)+' PSI';
+  const [eff,tag]=effectForPsi(psi);
+  const cls = tag==='r'?'red':(tag==='a'?'amber':'cyan');
+  effBox.innerHTML = `<div class="chip ${cls}" style="margin:0">
+    <div class="cl"><span class="name">Vaara-alue: ${zoneTxt1(D)}</span>
+    <span class="desc">k=${fmt(k,2)} · lähin taso ${fmt(psi,2)} PSI · ${fmt(kpa,2)} kPa · ${fmt(kpaToBar(kpa),3)} bar</span></div>
+    <span class="val" style="font-size:14px; text-align:right; max-width:52%">${eff}</span></div>
+    <p class="note" style="margin-top:10px">Vaikutuskertoimella <b>k = ${fmt(k,2)}</b> (${fmt(psi,2)} PSI ≈ ${fmt(kpa,1)} kPa) vaara-alueen säde nykyisellä panoksella (<b>${fmtKg(m)} kg TNT</b>) on <b>${zoneTxt1(D)}</b>. Säde on pyöristetty ylöspäin lähimpään metriin; tarkka arvo suluissa.</p>`;
+}
+
+/* ---------- Standoff table ---------- */
+function updateStandoff(m){
+  const tb=$("#standoffTable tbody");
+  // korosta lähin rivi
+  let best=-1, bd=Infinity;
+  if(m>0) STANDOFF.forEach((r,i)=>{ const d=Math.abs(Math.log(r[1])-Math.log(m)); if(d<bd){bd=d;best=i;} });
+  tb.innerHTML = STANDOFF.map((r,i)=>`<tr class="${i===best?'hit':''}">
+    <td class="desc-cell">${r[0]}</td><td>${fmt(r[1],0)}</td>
+    <td>${fmt(r[2],0)} m</td><td style="color:var(--amber)">${fmt(r[3],0)} m</td></tr>`).join('');
+}
+
+/* ---------- Moduuli 4: tärinä ---------- */
+function updateModule4(){
+  const m=totalTNT(), r=parseFloat($("#m4_r").value)||0;
+  const xEl=$("#m4_x"), eEl=$("#m4_eff"), tb=$("#vibTable tbody");
+  if(m>0 && r>0){
+    const x=m/Math.pow(r,1.5);
+    xEl.textContent=fmt(x,3);
+    let eff="Ei merkittävää vaikutusta", col="var(--green)";
+    if(x>=0.25){eff="Huomattavaa raon muodostumista"; col="var(--red)";}
+    else if(x>=0.12){eff="Raon muodostumista"; col="var(--amber)";}
+    else if(x>=0.06){eff="Pieniä rakoja, rappausta putoaa"; col="var(--amber)";}
+    eEl.textContent=eff; eEl.style.color=col;
+  } else { xEl.textContent='–'; eEl.textContent='–'; eEl.style.color='var(--muted)'; }
+
+  tb.innerHTML = VIB.map(([name,thr])=>{
+    const dist = m>0 ? Math.pow(m/thr, 1/1.5) : null;
+    return `<tr><td class="desc-cell">${name}</td><td>${fmt(thr,2)}</td>
+      <td style="color:var(--amber)">${m>0?fmt(dist,1)+' m':'–'}</td></tr>`;
+  }).join('');
+}
+$("#m4_r").addEventListener('input', updateModule4);
+
+/* ---------- Moduuli 5: kraatteri ---------- */
+function updateModule5(m){
+  const y=parseFloat($("#m5_soil").value)||0.8;
+  const rad = m>0 ? Math.cbrt(m/y) : null;
+  $("#m5_r").textContent = rad!==null ? fmt(rad,2)+' m' : '–';
+  const rin=parseFloat($("#m5_rin").value)||0;
+  $("#m5_m").textContent = rin>0 ? fmtKg(y*Math.pow(rin,3))+' kg TNT' : '–';
+}
+$("#m5_soil").addEventListener('change', ()=>updateModule5(totalTNT()));
+$("#m5_rin").addEventListener('input', ()=>updateModule5(totalTNT()));
+
+/* ---------- Moduuli 6: muuri ---------- */
+function updateModule6(){
+  const r1=parseFloat($("#m6_r1").value)||0;
+  const h2=parseFloat($("#m6_h2").value)||0;
+  const r2=parseFloat($("#m6_r2").value)||0;
+  const w2=parseFloat($("#m6_w2").value)||0;
+  $("#m6_h1").textContent = (r2>0 && h2>0) ? fmt(r1*h2/r2,2)+' m' : '–';
+  $("#m6_w1").textContent = (r2>0 && w2>0) ? fmt(r1*w2/r2,2)+' m' : '–';
+}
+["#m6_r1","#m6_h2","#m6_r2","#m6_w2"].forEach(s=>$(s).addEventListener('input', updateModule6));
+
+/* ---------- Moduuli 6: suojavahvuus uhkatason mukaan ---------- */
+// [nimi, säkkikerroksia, rakenteen paksuus cm, hiekka säkissä kuiva/märkä, hiekka vallissa kuiva/märkä, tiiliseinä cm]
+const PROT = [
+  ["Kevyt — A1–A4, B1–B2, C1–C5, D1–D4", "1", "93", "20–40 / 40–80", "25–45 / 50–90", "10–15"],
+  ["Keskiraskas — A5, B4, C5, D5, E1", "2", "186", "45 / 90", "60 / 120", "20"],
+  ["Sirpalekranaatit, yli 120 mm ruhjealueella", "2", "186", "–", "–", "–"],
+  ["Sinko, RsKes 114 (Apilas) — B3", "4", "372", "–", "–", "–"],
+  ["Lentopommit 25 kg", "2", "186", "80", "60 / 120", "20"],
+  ["Lentopommit 250 kg", "2", "186", "100 / 200", "90 / 180", "40"],
+  ["Lentopommit >250 kg ja autopommit", "4", "372", "100< / 200<", "125 / 250", "45<"]
+];
+// Uhkatasomatriisi: rivit tasoilta 5..1, sarakkeet A,B,C,D,E
+const THREAT = [
+  ["5","TKI 30 APDS","Rakenteet ASM","155 mm tykistö · 122 mm raketti","Matkalaukku 20 kg TNT","Kuorma-auto >4000 kg TNT"],
+  ["4","RSKK 12,7–14,5 AP","Panssari AT","120 mm heitin · 107 mm raketti","Vartalopommi 9 kg TNT + sirpaleet","Kevytkuorma-auto 4000 kg TNT"],
+  ["3","RK/TARKKIV 7,62 AP WC","Henkilö: thermobaric <2,5 kg / perinteinen","82 mm heitin","Urheilukassi 9 kg TNT","Pakettiauto 1500 kg TNT"],
+  ["2","RK 5,56–7,62 AP","40 mm kiväärikranaatti AT","60 mm heitin","Paketti 1,5 kg TNT","Henkilöauto 400 kg TNT"],
+  ["1","RK 5,56–7,62 Ball","—","Käsikranaatti","Kirje 0,125 kg TNT","Moottoripyörä 50 kg TNT"]
+];
+// Uhkakoodi -> suojavahvuusrivin (PROT) indeksi, suojataulukon mukaan
+const CODE2PROT = {
+  A1:0,A2:0,A3:0,A4:0,A5:1,
+  B2:0,B3:3,B4:1,
+  C1:0,C2:0,C3:0,C4:0,C5:1,
+  D1:0,D2:0,D3:0,D4:0,D5:1,
+  E1:1
+};
+function fillThreatSelect(){
+  const sel=$("#m6_threat");
+  sel.innerHTML = PROT.map((p,i)=>`<option value="${i}">${p[0]}</option>`).join('');
+  sel.addEventListener('change', ()=>showProt());
+  showProt();
+}
+function protItem(k,v,col){ return `<div class="rl"><span class="k">${k}</span><span class="v out ${col||'green'}" style="font-size:16px">${v}</span></div>`; }
+function showProt(){
+  const p=PROT[parseInt($("#m6_threat").value)||0];
+  $("#m6_prot").innerHTML =
+    protItem("Säkkikerroksia", p[1]+" kpl","amber")+
+    protItem("Rakenteen paksuus", p[2]+" cm","amber");
+}
+function fillProtTable(){
+  $("#protTable tbody").innerHTML = PROT.map((p,i)=>
+    `<tr data-prot="${i}"><td class="desc-cell">${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td></tr>`).join('');
+}
+function selectThreat(code, cell){
+  const idx=CODE2PROT[code];
+  const res=$("#threatResult");
+  document.querySelectorAll('#threatTable td.picked').forEach(td=>td.classList.remove('picked'));
+  document.querySelectorAll('#protTable tr.hit').forEach(tr=>tr.classList.remove('hit'));
+  if(idx===undefined){
+    res.innerHTML = `<b>${code}</b>: suojavahvuutta ei ole määritelty taulukossa.`;
+    return;
+  }
+  cell.classList.add('picked');
+  $("#m6_threat").value=idx; showProt();
+  const pr=$(`#protTable tr[data-prot="${idx}"]`); if(pr) pr.classList.add('hit');
+  const p=PROT[idx];
+  res.innerHTML = `<b>${code}</b> → ${p[0]}: <b>${p[1]} säkkikerrosta</b>, rakenteen paksuus <b>${p[2]} cm</b>.`;
+}
+function fillThreatTable(){
+  const letters=["A","B","C","D","E"];
+  $("#threatTable tbody").innerHTML = THREAT.map(row=>{
+    const lvl=row[0];
+    let cells=`<td style="color:var(--amber); font-weight:600">${lvl}</td>`;
+    row.slice(1).forEach((c,j)=>{
+      const code=letters[j]+lvl;
+      const clickable = CODE2PROT[code]!==undefined && c && c!=="—";
+      cells += clickable
+        ? `<td class="desc-cell cell-click" data-code="${code}" onclick="selectThreat('${code}',this)">${c}</td>`
+        : `<td class="desc-cell">${c}</td>`;
+    });
+    return `<tr>${cells}</tr>`;
+  }).join('');
+}
+
+$("#m2_dist").addEventListener('input', ()=>{
+  const m=totalTNT(), cbrt=Math.cbrt(2.2*m);
+  updateModule2(m, cbrt);
+  // Etäisyys -> vaikutuskerroin k (Vaara-alue annetulla k-arvolla)
+  const D=parseFloat($("#m2_dist").value)||0;
+  if(m>0 && D>0){ $("#m2k_k").value = Math.round((D/(cbrt*0.3))*100)/100; }
+  updateModule2k(m, cbrt);
+});
+$("#m2k_k").addEventListener('input', ()=>{
+  const m=totalTNT(), cbrt=Math.cbrt(2.2*m);
+  updateModule2k(m, cbrt);
+  // Vaikutuskerroin k -> etäisyys kohteeseen (Yksittäinen kohde)
+  const k=parseFloat($("#m2k_k").value)||0;
+  if(m>0 && k>0){ $("#m2_dist").value = Math.round((0.3*k*cbrt)*10)/10; }
+  updateModule2(m, cbrt);
+});
+
+/* ---------- Static tables ---------- */
+function barFromKpa(kpaStr){
+  return kpaStr.split('–').map(s=>{
+    const v=parseFloat(s.replace(/\s/g,'').replace(',','.'));
+    return isFinite(v) ? (v/100).toLocaleString('fi-FI',{minimumFractionDigits:0, maximumFractionDigits:3}) : s;
+  }).join('–');
+}
+function fillHuman(){
+  $("#humanTable tbody").innerHTML = HUMAN.map(([name,psi,kpa,tag])=>{
+    return `<tr data-psi="${psiMid(psi)}"><td class="desc-cell"><span class="tag ${tag}">${name}</span></td>
+      <td>${psi}</td>
+      <td>${kpa}</td>
+      <td>${barFromKpa(kpa)}</td></tr>`;
+  }).join('');
+  const nb=document.getElementById('humanNotes');
+  if(nb) nb.innerHTML = HUMAN_NOTES.map(t=>`<div>${t}</div>`).join('');
+}
+function fillStruct(){
+  let html='';
+  STRUCT.forEach(g=>{
+    g.rows.forEach((r,i)=>{
+      const [vaurio,psi,kpa,k,tag]=r;
+      html+=`<tr data-psi="${psiMid(psi)}">`;
+      if(i===0) html+=`<td class="desc-cell" rowspan="${g.rows.length}" style="vertical-align:top; font-weight:500; color:var(--ink)">${g.kohde}</td>`;
+      html+=`<td class="desc-cell"><span class="dot ${tag}"></span>${vaurio}</td>`;
+      html+=`<td>${psi}</td><td>${kpa}</td><td>${k||'–'}</td>`;
+      html+='</tr>';
+    });
+  });
+  $("#structTable tbody").innerHTML=html;
+}
+
+/* ---------- Init ---------- */
+fillHuman();
+fillStruct();
+fillThreatSelect();
+fillProtTable();
+fillThreatTable();
+addRow(); // yksi rivi valmiiksi
+
+/* ---------- Teeman vaihto (vaalea / tumma) ---------- */
+(function(){
+  const btn=document.getElementById('themeBtn');
+  const root=document.documentElement;
+  function apply(theme){
+    if(theme==='dark'){ root.setAttribute('data-theme','dark'); btn.textContent='☀︎ Vaalea'; }
+    else { root.removeAttribute('data-theme'); btn.textContent='🌙 Tumma'; }
+    const meta=document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', theme==='dark' ? '#12161a' : '#eef1f3');
+  }
+  let saved='light';
+  try{ saved=localStorage.getItem('vaaraTheme')||'light'; }catch(e){}
+  apply(saved);
+  btn.addEventListener('click',()=>{
+    const next = root.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+    apply(next);
+    try{ localStorage.setItem('vaaraTheme', next); }catch(e){}
+  });
+})();
+
+/* PWA: rekisteröi service worker (toimii vain https/localhost -isännöinnissä) */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

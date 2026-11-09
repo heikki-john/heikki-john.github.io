@@ -591,7 +591,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
   }
   function renderTop() {
     const top = document.getElementById("top");
-    top.replaceChildren(
+    top.replaceChildren(...[
       h("div", { class: "brand" }, brandMark(), "!toohaK"),
       h("div", { class: "spacer" }),
       view === "game" && practice ? h("span", { class: "codechip" }, "Harjoitus")
@@ -600,7 +600,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
         ? h("button", { class: "btn ghost danger", onclick: () => leave() }, "Vahvista poistuminen")
         : h("button", { class: "btn ghost", onclick: () => { confirmLeave = true; render(); setTimeout(() => { confirmLeave = false; render(); }, 4000); } }, "Poistu"))
       : view === "setup" ? h("button", { class: "btn ghost", onclick: () => { view = "home"; render(); } }, "Takaisin") : null
-    );
+    ].filter(Boolean));
   }
 
   function rulesBlock() {
@@ -658,11 +658,11 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     ));
     return h("div", {},
       h("h1", {}, "Kysymykset"),
-      h("p", { class: "lead" }, "Jokaiseen kysymykseen tulee neljä vaihtoehtoa. Hyvä kysymys on sellainen, jossa kaikki vaihtoehdot houkuttelevat."),
+      h("p", { class: "lead" }, "Jokaiseen kysymykseen tulee neljä vaihtoehtoa. Voit kirjoittaa omat kysymykset tai arpoa 10 kysymystä sadan valmiin kysymyksen joukosta."),
       h("div", { class: "stack section" }, cards),
       h("div", { class: "btnrow", style: "margin-top:14px" },
         h("button", { class: "btn secondary", onclick: () => { draft.push(blankQ()); saveDraft(); render(); } }, "Lisää kysymys"),
-        h("button", { class: "btn ghost", onclick: () => { draft = examples(); saveDraft(); render(); } }, "Käytä esimerkkikysymyksiä")
+        h("button", { class: "btn ghost", onclick: () => { draft = examples(); saveDraft(); render(); } }, "Arvo 10 esimerkkikysymystä")
       ),
       h("div", { class: "section stack" },
         setupError ? h("p", { class: "error", role: "alert" }, setupError) : null,
@@ -671,19 +671,113 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     );
   }
 
-  function examples() {
-    return [
-      { q: "Paras pizzatäyte?", options: ["Ananas", "Pepperoni", "Herkkusienet", "Aurajuusto"] },
-      { q: "Kesämökin tärkein asia?", options: ["Sauna", "Laituri", "Hiljaisuus", "Wifi"] },
-      { q: "Minkä supervoiman ottaisit?", options: ["Lentäminen", "Näkymättömyys", "Ajatustenluku", "Aikamatkustus"] },
-      { q: "Mihin aikaan heräisit mieluiten?", options: ["Klo 5.30", "Klo 7.00", "Klo 9.00", "Klo 11.00"] },
-      { q: "Paras vuodenaika?", options: ["Kevät", "Kesä", "Syksy", "Talvi"] },
-      { q: "Mikä eläin olisit?", options: ["Karhu", "Kettu", "Pöllö", "Orava"] },
-      { q: "Paras jäätelömaku?", options: ["Vanilja", "Suklaa", "Mansikka", "Salmiakki"] },
-      { q: "Mihin lähtisit huomenna?", options: ["Lappiin", "Lissaboniin", "Tokioon", "New Yorkiin"] },
-      { q: "Kokouksen pahin piirre?", options: ["Venyy yli ajan", "Ei asialistaa", "Kamerat kiinni", "Turhia osallistujia"] },
-      { q: "Paras perjantai-ilta?", options: ["Sohva ja sarja", "Ravintola", "Sauna", "Bileet"] }
-    ];
+  const QUESTION_BANK = [
+    ["Paras pizzatäyte?", "Ananas", "Pepperoni", "Herkkusienet", "Aurajuusto"],
+    ["Kesämökin tärkein asia?", "Sauna", "Laituri", "Hiljaisuus", "Wifi"],
+    ["Minkä supervoiman ottaisit?", "Lentäminen", "Näkymättömyys", "Ajatustenluku", "Aikamatkustus"],
+    ["Mihin aikaan heräisit mieluiten?", "Klo 5.30", "Klo 7.00", "Klo 9.00", "Klo 11.00"],
+    ["Paras vuodenaika?", "Kevät", "Kesä", "Syksy", "Talvi"],
+    ["Mikä eläin olisit?", "Karhu", "Kettu", "Pöllö", "Orava"],
+    ["Paras jäätelömaku?", "Vanilja", "Suklaa", "Mansikka", "Salmiakki"],
+    ["Mihin lähtisit huomenna?", "Lappiin", "Lissaboniin", "Tokioon", "New Yorkiin"],
+    ["Kokouksen pahin piirre?", "Venyy yli ajan", "Ei asialistaa", "Kamerat kiinni", "Turhia osallistujia"],
+    ["Paras perjantai-ilta?", "Sohva ja sarja", "Ravintola", "Sauna", "Bileet"],
+    ["Paras aamiainen?", "Puuro", "Munakas", "Smoothie", "Pelkkä kahvi"],
+    ["Mikä on aamun juoma?", "Musta kahvi", "Maitokahvi", "Tee", "Vesi"],
+    ["Paras karkki?", "Salmiakki", "Suklaa", "Hedelmäkarkki", "Lakritsi"],
+    ["Mieluisin liikuntamuoto?", "Kävely", "Juoksu", "Kuntosali", "Pallopelit"],
+    ["Mitä tekisit lottovoitolla ensimmäiseksi?", "Matkustaisin", "Ostaisin asunnon", "Lahjoittaisin", "Sijoittaisin"],
+    ["Paras joulupöydän ruoka?", "Kinkku", "Laatikot", "Rosolli", "Kalat"],
+    ["Paras lomakohde Suomessa?", "Lappi", "Helsinki", "Saaristo", "Järvi-Suomi"],
+    ["Mieluisin musiikkityyli?", "Pop", "Rock", "Klassinen", "Hiphop"],
+    ["Kissa vai koira?", "Kissa", "Koira", "Molemmat", "Ei kumpaakaan"],
+    ["Paras elokuvagenre?", "Komedia", "Kauhu", "Scifi", "Draama"],
+    ["Mihin aikaan menet nukkumaan?", "Ennen klo 22", "Klo 22–23", "Klo 23–24", "Puolenyön jälkeen"],
+    ["Paras pizzapohja?", "Ohut", "Paksu pannupohja", "Gluteeniton", "Täytetty reuna"],
+    ["Paras makkara?", "Grillimakkara", "Nakki", "Lenkkimakkara", "Chorizo"],
+    ["Paras sää?", "Helle", "Pakkaspäivä", "Sadepäivä", "Puolipilvinen"],
+    ["Mitä keräisit?", "Postimerkkejä", "Vinyylilevyjä", "Huonekasveja", "Kenkiä"],
+    ["Mitä veisit autiolle saarelle?", "Kirjan", "Puukon", "Kitaran", "Ystävän"],
+    ["Mieluisin tapa matkustaa?", "Juna", "Lentokone", "Auto", "Laiva"],
+    ["Paras saunan lämpötila?", "60 °C", "75 °C", "90 °C", "Yli 100 °C"],
+    ["Paras vapaapäivän aloitus?", "Pitkät unet", "Aamulenkki", "Aamupala sängyssä", "Siivous"],
+    ["Unelmatyö?", "Kirjailija", "Kokki", "Lentäjä", "Muusikko"],
+    ["Paras keksi?", "Kaurakeksi", "Suklaahippukeksi", "Piparkakku", "Täytekeksi"],
+    ["Paras lautapeli?", "Monopoli", "Shakki", "Afrikan tähti", "Trivial Pursuit"],
+    ["Mieluisin juhlapyhä?", "Juhannus", "Joulu", "Vappu", "Uusivuosi"],
+    ["Paras vappuherkku?", "Munkki", "Tippaleipä", "Sima", "Perunasalaatti"],
+    ["Paras paikka viettää juhannusta?", "Mökki", "Kaupunki", "Festivaali", "Koti"],
+    ["Mitä osaisit mieluiten?", "Soittaa pianoa", "Puhua japania", "Surffata", "Koodata"],
+    ["Mikä aikakausi kiehtoo eniten?", "Antiikki", "Keskiaika", "Viikinkiaika", "1980-luku"],
+    ["Paras peruna?", "Muusi", "Ranskalaiset", "Uunilohkot", "Keitetyt"],
+    ["Paras kahvileipä?", "Korvapuusti", "Munkki", "Karjalanpiirakka", "Juustokakku"],
+    ["Paras lemmikki?", "Papukaija", "Kilpikonna", "Kani", "Hevonen"],
+    ["Missä asuisit?", "Kaupungin keskustassa", "Lähiössä", "Maalla", "Saaristossa"],
+    ["Paras somekanava?", "Instagram", "TikTok", "LinkedIn", "Ei mikään"],
+    ["Paras etätyöpaikka?", "Koti", "Kahvila", "Mökki", "Kirjasto"],
+    ["Paras sarjailtojen naposteltava?", "Sipsit", "Popcorn", "Suklaa", "Hedelmät"],
+    ["Mitä tekisit sadepäivänä?", "Lukisin", "Pelaisin", "Leipoisin", "Nukkuisin"],
+    ["Paras väri?", "Sininen", "Vihreä", "Punainen", "Musta"],
+    ["Paras kesäjuoma?", "Limonadi", "Jääkahvi", "Sima", "Kivennäisvesi"],
+    ["Mihin käyttäisit ylimääräisen tunnin päivässä?", "Uneen", "Liikuntaan", "Harrastukseen", "Ystäviin"],
+    ["Mikä taito on arvokkain?", "Ruoanlaitto", "Korjaaminen", "Kielitaito", "Esiintyminen"],
+    ["Pahin kotityö?", "Imurointi", "Tiskaus", "Pyykit", "Vessan pesu"],
+    ["Paras retkieväs?", "Makkara", "Voileipä", "Pulla", "Termoskahvi"],
+    ["Mieluisin luontokohde?", "Tunturi", "Meri", "Metsä", "Suo"],
+    ["Paras marja?", "Mustikka", "Mansikka", "Lakka", "Puolukka"],
+    ["Paras sienisaalis?", "Kantarelli", "Herkkutatti", "Suppilovahvero", "En sienestä"],
+    ["Kesän paras tapahtuma?", "Festarit", "Kesäteatteri", "Mökkiviikonloppu", "Kalastusreissu"],
+    ["Paras aika vuorokaudesta?", "Aamu", "Iltapäivä", "Ilta", "Yö"],
+    ["Mitä luet mieluiten?", "Dekkareita", "Fantasiaa", "Elämäkertoja", "Uutisia"],
+    ["Paras tapa kuunnella musiikkia?", "Kuulokkeet", "Kaiuttimet", "Livekeikka", "Vinyyli"],
+    ["Missä lajissa kilpailisit olympialaisissa?", "Mäkihyppy", "Curling", "Pikajuoksu", "Uinti"],
+    ["Paras paikka jääkiekko-ottelussa?", "Maalivahti", "Puolustaja", "Hyökkääjä", "Katsomo"],
+    ["Mikä ruoka on yliarvostettu?", "Sushi", "Avokado", "Kaviaari", "Hummeri"],
+    ["Paras tapa rentoutua?", "Sauna", "Meditaatio", "Kävely", "Pelaaminen"],
+    ["Mitä tilaat ravintolassa?", "Pihvin", "Kalaa", "Pastaa", "Kasvisruokaa"],
+    ["Paras keitto?", "Lohikeitto", "Hernekeitto", "Kanakeitto", "Borssikeitto"],
+    ["Paras pulla?", "Korvapuusti", "Pullapitko", "Laskiaispulla", "Voisilmäpulla"],
+    ["Mikä tekisi työpäivästä paremman?", "Lyhyempi päivä", "Parempi kahvi", "Hiljaisuus", "Kakku"],
+    ["Paras palaverin pituus?", "15 minuuttia", "30 minuuttia", "Tunti", "Ei palaveria"],
+    ["Paras viestintätapa töissä?", "Sähköposti", "Chat", "Puhelu", "Kasvokkain"],
+    ["Mitä tekisit päivän näkymättömänä?", "Matkustaisin ilmaiseksi", "Kuuntelisin juoruja", "Pelleilisin", "En mitään"],
+    ["Mihin aikaan syöt lounasta?", "Klo 10.30", "Klo 11.30", "Klo 12.30", "Klo 14.00"],
+    ["Paras talvilaji?", "Hiihto", "Laskettelu", "Luistelu", "Avantouinti"],
+    ["Paras tapa liikkua kaupungissa?", "Kävellen", "Pyörällä", "Ratikalla", "Autolla"],
+    ["Mikä eläin pelottaa eniten?", "Hämähäkki", "Käärme", "Hai", "Ampiainen"],
+    ["Tärkein ominaisuus ystävässä?", "Huumori", "Luotettavuus", "Rehellisyys", "Spontaanius"],
+    ["Miten viettäisit syntymäpäivän?", "Juhlilla", "Illallisella", "Matkalla", "Ei mitenkään erityisesti"],
+    ["Paras lahja?", "Elämys", "Kirja", "Lahjakortti", "Itse tehty"],
+    ["Musiikin paras vuosikymmen?", "1960-luku", "1980-luku", "1990-luku", "2010-luku"],
+    ["Paras pelilaite?", "PlayStation", "Xbox", "Nintendo", "Tietokone"],
+    ["Mitä haluaisit oppia seuraavaksi?", "Uuden kielen", "Soittimen", "Ruoanlaittoa", "Ohjelmointia"],
+    ["Paras säilyke?", "Hernekeitto", "Ravioli", "Tonnikala", "Persikat"],
+    ["Kuka tyhjentää työpaikan tiskikoneen?", "Minä", "Kollega", "Siivooja", "Ei kukaan"],
+    ["Paras sauna?", "Savusauna", "Puusauna", "Sähkösauna", "Höyrysauna"],
+    ["Mitä teettäisit robotilla?", "Siivouksen", "Ruoanlaiton", "Koiran ulkoilutuksen", "Työni"],
+    ["Mikä planeetta kiinnostaa eniten?", "Mars", "Jupiter", "Saturnus", "Venus"],
+    ["Paras tapa juhlia onnistumista?", "Kakku", "Afterwork", "Vapaapäivä", "Taputus olalle"],
+    ["Kesän kenkävalinta?", "Lenkkarit", "Sandaalit", "Paljaat jalat", "Kumisaappaat"],
+    ["Paras kastike?", "Bearnaise", "Ketsuppi", "Valkosipulikastike", "Sinappi"],
+    ["Paras leipä?", "Ruisleipä", "Ranskanleipä", "Hapanjuurileipä", "Näkkileipä"],
+    ["Paras keino selvitä kauhuelokuvassa?", "Pako", "Piiloutuminen", "Taistelu", "Avun hälyttäminen"],
+    ["Mitä nappaat mukaan tulipalossa?", "Puhelimen", "Valokuvat", "Lemmikin", "Lompakon"],
+    ["Paras kuukausi?", "Tammikuu", "Toukokuu", "Heinäkuu", "Lokakuu"],
+    ["Mitä tekisit viikon sähkökatkon aikana?", "Lähtisin mökille", "Lukisin kynttilänvalossa", "Matkustaisin pois", "Valittaisin"],
+    ["Paras kesätyö nuorena?", "Mansikanpoiminta", "Kioskimyyjä", "Leiriohjaaja", "Toimistotyö"],
+    ["Mihin hetkeen matkustaisit ajassa?", "Kuukävelylle", "Pyramidien rakentamiseen", "Woodstockiin", "Dinosaurusten aikaan"],
+    ["Paras automatkan eväs?", "Huoltoaseman munkki", "Kotieväät", "Hampurilainen", "Karkkipussi"],
+    ["Hyödyllisin keksintö?", "Älypuhelin", "Pyykinpesukone", "Internet", "Jääkaappi"],
+    ["Mitä katsot televisiosta?", "Uutisia", "Urheilua", "Tosi-tv:tä", "En katso televisiota"],
+    ["Paras tapa valmistaa kala?", "Savustettuna", "Paistettuna", "Uunissa", "Raakana"],
+    ["Tärkein taito zombimaailmanlopussa?", "Ensiapu", "Ruoanlaitto", "Rakentaminen", "Juokseminen"],
+    ["Paras tapa päättää peli-ilta?", "Uusintamatsi", "Iltapala", "Suoraan nukkumaan", "Jälkipuinti"]
+  ];
+  // draws 10 random questions from the 100-question bank
+  function examples(count = 10) {
+    const pool = QUESTION_BANK.slice();
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    return pool.slice(0, count).map(([q, ...options]) => ({ q, options }));
   }
 
   function playerList(opts) {

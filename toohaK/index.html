@@ -1,1 +1,964 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>!toohaK – vastaa eri tavalla kuin muut</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1EFF8; --surface:#FFFFFF; --ink:#1E1A35; --muted:#5F5A78; --line:#D9D5EA;
+  --a:#D94A2E; --b:#D9A100; --c:#13867A; --d:#5B3FC4;
+  --focus:#5B3FC4; --danger:#B3261E; --tile-dark:#1E1A35;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#16142A; --surface:#221F3C; --ink:#F1EFF8; --muted:#ABA6C8; --line:#3A3660;
+    --a:#F2775B; --b:#EDBE2E; --c:#3BC1B1; --d:#9A83F5;
+    --focus:#9A83F5; --danger:#FF8A80; --tile-dark:#16142A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16142A; --surface:#221F3C; --ink:#F1EFF8; --muted:#ABA6C8; --line:#3A3660;
+  --a:#F2775B; --b:#EDBE2E; --c:#3BC1B1; --d:#9A83F5;
+  --focus:#9A83F5; --danger:#FF8A80; --tile-dark:#16142A;
+  color-scheme:dark;
+}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font-family:"Bricolage Grotesque",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:600px;margin:0 auto;padding:12px 20px 64px}
 
+/* option colour slots */
+.o0{--col:var(--a);--tile-ink:#fff}
+.o1{--col:var(--b);--tile-ink:var(--tile-dark)}
+.o2{--col:var(--c);--tile-ink:#fff}
+.o3{--col:var(--d);--tile-ink:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .o0,:root:not([data-theme="light"]) .o2,:root:not([data-theme="light"]) .o3{--tile-ink:var(--tile-dark)}}
+:root[data-theme="dark"] .o0,:root[data-theme="dark"] .o2,:root[data-theme="dark"] .o3{--tile-ink:var(--tile-dark)}
+
+header.top{display:flex;align-items:center;gap:10px;padding:8px 0 22px;min-height:56px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:21px;letter-spacing:-.02em}
+.brand svg{width:26px;height:26px;flex:none}
+.top .spacer{flex:1}
+.codechip{font-weight:800;letter-spacing:.14em;padding:4px 10px;border:2px solid var(--line);border-radius:8px;font-size:15px}
+
+h1{font-size:clamp(34px,9vw,50px);line-height:1.02;letter-spacing:-.035em;font-weight:800;margin:0 0 14px}
+h2{font-size:23px;line-height:1.2;letter-spacing:-.02em;font-weight:800;margin:0 0 12px}
+h3{font-size:17px;font-weight:700;margin:0 0 8px}
+p{margin:0 0 14px}
+.lead{color:var(--muted);font-size:18px;max-width:42ch}
+.muted{color:var(--muted)}
+.small{font-size:15px}
+.stack>*+*{margin-top:14px}
+.section{margin-top:36px}
+
+label.lbl{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+input,textarea{font:inherit;color:var(--ink);background:var(--surface);border:2px solid var(--line);
+  border-radius:12px;padding:12px 14px;width:100%;min-height:50px}
+textarea{resize:vertical;min-height:64px}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.8}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.code-input{font-size:42px;font-weight:800;letter-spacing:.32em;text-indent:.32em;text-transform:uppercase;text-align:center;padding:10px}
+
+.btn{font:inherit;font-weight:700;font-size:17px;border:2px solid var(--ink);border-radius:999px;padding:12px 24px;
+  cursor:pointer;background:var(--ink);color:var(--bg);min-height:52px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.wide{width:100%}
+.btn.secondary{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted);padding:8px 12px;min-height:40px;font-weight:600}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px}
+
+.error{color:var(--danger);font-weight:600;font-size:15px;margin-top:8px}
+
+/* answer options */
+.opts{display:grid;gap:10px}
+.opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);
+  border:2px solid var(--line);border-radius:16px;padding:12px;font:inherit;font-size:19px;font-weight:600;
+  color:var(--ink);min-height:70px;cursor:pointer}
+.opt[disabled]{cursor:default}
+.tile{flex:none;width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-weight:800;
+  font-size:20px;color:var(--tile-ink);background:var(--col)}
+.opt.picked{border-color:var(--col);box-shadow:inset 0 0 0 2px var(--col)}
+.opts.has-pick .opt:not(.picked){opacity:.6}
+.opt .check{margin-left:auto;font-size:15px;font-weight:700;color:var(--muted)}
+
+.qnum{font-weight:700;color:var(--muted);font-size:15px;margin-bottom:6px}
+.qtext{font-size:clamp(26px,7vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:800;margin:0 0 22px}
+
+/* join code tiles: the odd one out */
+.codetiles{display:flex;gap:10px;margin:8px 0 18px}
+.codetiles span{width:clamp(58px,18vw,84px);aspect-ratio:1;border-radius:16px;display:grid;place-items:center;
+  font-weight:800;font-size:clamp(34px,11vw,52px);background:var(--col);color:var(--tile-ink)}
+.codetiles span:nth-child(3){transform:translateY(12px) rotate(-6deg)}
+
+/* lists */
+.plist{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.plist li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);min-height:52px}
+.plist .nm{font-weight:600;flex:1;min-width:0;overflow-wrap:anywhere}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;border:2px solid var(--muted)}
+.dot.on{background:var(--c);border-color:var(--c)}
+.progress{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:6px 0 14px}
+.progress>i{display:block;height:100%;background:var(--ink);transition:width .3s}
+
+/* reveal */
+.rows{border-top:1px solid var(--line)}
+.row{padding:14px 0;border-bottom:1px solid var(--line)}
+.row-head{display:flex;align-items:center;gap:12px}
+.row-head .tile{width:36px;height:36px;font-size:17px;border-radius:9px}
+.row-head .txt{font-weight:700;flex:1;min-width:0;overflow-wrap:anywhere}
+.row-head .cnt{font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
+.bar{height:10px;border-radius:5px;background:var(--line);margin:10px 0;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--col);transform-origin:left;animation:grow .8s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{transform:scaleX(0)}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);overflow-wrap:anywhere}
+.chip.me{border:2px solid var(--ink);font-weight:700}
+.tag{font-size:13px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--col);color:var(--tile-ink);white-space:nowrap}
+
+.points{display:flex;align-items:baseline;gap:12px;margin:4px 0 6px}
+.points b{font-size:68px;line-height:1;font-weight:800;letter-spacing:-.04em;color:var(--col,var(--ink))}
+
+.board{list-style:none;margin:0;padding:0}
+.board li{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.board .rk{font-weight:800;font-size:20px;color:var(--muted);font-variant-numeric:tabular-nums}
+.board .nm{font-weight:600;overflow-wrap:anywhere}
+.board .sc{font-weight:800;font-size:20px;font-variant-numeric:tabular-nums}
+.board li.me .nm{font-weight:800}
+.board li.first .rk{color:var(--ink)}
+
+/* podium */
+.podium{display:grid;grid-template-columns:repeat(3,1fr);align-items:end;gap:8px;margin:30px 0 8px}
+.pod{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.pod1{grid-column:2;grid-row:1}.pod2{grid-column:1;grid-row:1}.pod3{grid-column:3;grid-row:1}
+.pod-name{font-weight:800;font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.pod1 .pod-name{font-size:21px}
+.pod.me .pod-name{text-decoration:underline;text-underline-offset:4px}
+.pod-score{font-size:14px;color:var(--muted);margin:3px 0 8px}
+.pod-block{width:100%;background:var(--col);color:var(--tile-ink);border-radius:14px 14px 4px 4px;display:grid;place-items:center;
+  font-weight:800;font-size:clamp(28px,8vw,40px);transform-origin:bottom;animation:rise .9s cubic-bezier(.2,.8,.2,1) both}
+.pod1 .pod-block{height:150px;animation-delay:.5s}
+.pod2 .pod-block{height:108px;animation-delay:.25s}
+.pod3 .pod-block{height:78px}
+@keyframes rise{from{transform:scaleY(0)}}
+@media (prefers-reduced-motion:reduce){.pod-block{animation:none}}
+
+/* question editor */
+.qcard{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:16px}
+.qcard-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.optin{display:flex;align-items:center;gap:10px;margin-top:8px}
+.optin .tile{width:36px;height:36px;font-size:16px;border-radius:9px}
+.optin input{min-height:46px;padding:10px 12px}
+
+.rules{border-left:4px solid var(--d);padding:4px 0 4px 16px}
+.rules p{margin-bottom:8px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;font-size:15px;
+  max-width:calc(100% - 40px);z-index:20}
+.toast:empty{display:none}
+.center{text-align:center}
+
+@media (prefers-reduced-motion:reduce){
+  .bar>i{animation:none}
+  .progress>i{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top" id="top"></header>
+  <main id="app"><p class="muted">Ladataan…</p></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+/* =====================================================================
+   FIREBASE-ASETUKSET: korvaa alla oleva lohko omalla firebaseConfigillasi
+   (Firebase-konsoli → Project settings → Your apps → SDK setup and configuration)
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyA2V3K65o6Mt6MZUSxE2rre8ri2s-a_QgY",
+  authDomain: "toohak-4dd07.firebaseapp.com",
+  projectId: "toohak-4dd07",
+  storageBucket: "toohak-4dd07.firebasestorage.app",
+  messagingSenderId: "642554852070",
+  appId: "1:642554852070:web:bfc7c12c91409713990127"
+};
+/* ===================================================================== */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsOnSnapshot } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+(() => {
+  "use strict";
+
+  /* Firestore wrapped in the small doc/collection API the game uses */
+  function makeFirestoreDb(fs) {
+    const wrapDoc = s => ({ id: s.id, exists: s.exists(), data: () => s.data(), metadata: s.metadata });
+    const wrapQuery = s => ({ docs: s.docs.map(wrapDoc), size: s.size, empty: s.empty, metadata: s.metadata });
+    const docRef = path => {
+      const r = fsDoc(fs, path);
+      return {
+        id: r.id, path,
+        get: async () => wrapDoc(await getDoc(r)),
+        set: d => setDoc(r, d),
+        update: d => updateDoc(r, d),
+        delete: () => deleteDoc(r),
+        onSnapshot: (fn, err) => fsOnSnapshot(r, s => fn(wrapDoc(s)), err)
+      };
+    };
+    const colRef = path => {
+      const r = fsCol(fs, path);
+      return {
+        path,
+        doc: id => docRef(path + "/" + id),
+        get: async () => wrapQuery(await getDocs(r)),
+        onSnapshot: (fn, err) => fsOnSnapshot(r, s => fn(wrapQuery(s)), err)
+      };
+    };
+    return { doc: docRef, collection: colRef };
+  }
+
+  const LETTERS = ["A", "B", "C", "D"];
+  const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+  /* ---------- helpers ---------- */
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else if (k === "value") el.value = v;
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat(Infinity)) {
+      if (kid == null || kid === false) continue;
+      el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+  const local = {
+    get(k) { try { return JSON.parse(localStorage.getItem("toisin:" + k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem("toisin:" + k, JSON.stringify(v)); } catch {} },
+    del(k) { try { localStorage.removeItem("toisin:" + k); } catch {} }
+  };
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.textContent = ""; }, 4000);
+  }
+  const sanitize = (s) => String(s).replace(/[^A-Za-z0-9_\-~:@+]/g, "_").slice(0, 150);
+  const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
+  const plural = (n, one, many) => n === 1 ? one : many;
+
+  /* ---------- state ---------- */
+  let db = null, sid = null;
+  let view = "loading";       // loading | unavailable | home | setup | game
+  let role = null, code = null, myName = "";
+  let game = null, players = [], playersLoaded = false, answers = [], ansQ = null;
+  let unsubs = [], ansUnsub = null;
+  let busy = false, wasIn = false, kicked = false;
+  let confirmKick = null, confirmLeave = false;
+  let pendingChoice = null;
+  let joinError = "", setupError = "";
+  let draft = local.get("draft") || [blankQ()];
+  let draftTimer;
+  let practice = false, realDb = null, botTimers = [], botQ = null, practiceWeights = [];
+
+  function blankQ() { return { q: "", options: ["", "", "", ""] }; }
+  function saveDraft() { clearTimeout(draftTimer); draftTimer = setTimeout(() => local.set("draft", draft), 300); }
+
+  /* ---------- scoring ----------
+     N = vastanneiden määrä, k = omaan vaihtoehtoon vastanneet (itse mukaan lukien)
+     pisteet = N − k  (yksi piste jokaisesta, joka vastasi eri tavalla)
+     jos k = 1 eli olit ainoa: pisteet × 2                                  */
+  function scoreRound(r) {
+    const picks = (r && r.picks) || {};
+    const ids = Object.keys(picks);
+    const N = ids.length;
+    const counts = [0, 0, 0, 0];
+    ids.forEach(id => { counts[picks[id]]++; });
+    const pts = {};
+    ids.forEach(id => {
+      const k = counts[picks[id]];
+      let p = N - k;
+      if (k === 1) p *= 2;
+      pts[id] = p;
+    });
+    const nonzero = counts.filter(c => c > 0);
+    const minC = nonzero.length ? Math.min(...nonzero) : 0;
+    return { counts, pts, N, minC };
+  }
+  function standings() {
+    const t = {}, nm = {};
+    const results = (game && game.results) || {};
+    Object.keys(results).sort((a, b) => a - b).forEach(q => {
+      const r = results[q];
+      Object.assign(nm, r.names || {});
+      const { pts } = scoreRound(r);
+      for (const [id, p] of Object.entries(pts)) t[id] = (t[id] || 0) + p;
+    });
+    players.forEach(p => { nm[p.id] = p.name; if (!(p.id in t)) t[p.id] = 0; });
+    const list = Object.entries(t)
+      .map(([id, score]) => ({ id, score, name: nm[id] || "Pelaaja" }))
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "fi"));
+    let rank = 0, prev = null;
+    list.forEach((e, i) => { if (e.score !== prev) { rank = i + 1; prev = e.score; } e.rank = rank; });
+    return list;
+  }
+
+  /* ---------- db wiring ---------- */
+  function onErr(e) {
+    if (e && e.code === "revoked") { view = "unavailable"; render(); return; }
+    toast("Yhteys pelin tietoihin katkesi. Lataa sivu uudelleen.");
+  }
+  function unsubAll() {
+    unsubs.forEach(u => { try { u(); } catch {} });
+    unsubs = [];
+    if (ansUnsub) { try { ansUnsub(); } catch {} ansUnsub = null; }
+    ansQ = null;
+  }
+  function enterGame(c, r) {
+    code = c; role = r; view = "game";
+    game = null; players = []; playersLoaded = false; answers = [];
+    wasIn = false; kicked = false; confirmKick = null; confirmLeave = false; pendingChoice = null;
+    unsubAll();
+    unsubs.push(db.doc(`games/${code}`).onSnapshot(s => {
+      if (!s.exists) { game = null; render(); return; }
+      game = s.data();
+      syncAnswers();
+      afterData();
+    }, onErr));
+    unsubs.push(db.collection(`games/${code}/players`).onSnapshot(s => {
+      players = s.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+      playersLoaded = !s.metadata.fromCache || playersLoaded || s.size > 0;
+      afterData();
+    }, onErr));
+    render();
+  }
+  function syncAnswers() {
+    const q = game.current;
+    if (q === ansQ) return;
+    if (ansUnsub) { ansUnsub(); ansUnsub = null; }
+    ansQ = q; answers = []; pendingChoice = null;
+    if (q >= 0) {
+      ansUnsub = db.collection(`games/${code}/answers`).onSnapshot(s => {
+        answers = s.docs.map(d => d.data()).filter(a => a && a.q === q).map(a => ({ id: a.uid, choice: a.choice }));
+        afterData();
+      }, onErr);
+    }
+  }
+  function afterData() {
+    if (role === "player") {
+      const me = players.find(p => p.id === sid);
+      if (me) { wasIn = true; kicked = false; }
+      else if (wasIn && playersLoaded) kicked = true;
+    }
+    if (practice) scheduleBots();
+    if ((role === "host" || practice) && game && game.phase === "answering" && !busy && ansQ === game.current) {
+      const ids = players.map(p => p.id);
+      if (ids.length > 0 && ids.every(id => answers.some(a => a.id === id))) reveal();
+    }
+    render();
+  }
+
+  /* ---------- host actions ---------- */
+  async function createGame() {
+    setupError = "";
+    const qs = draft.map(d => ({ q: d.q.trim(), options: d.options.map(o => o.trim()) }));
+    const badIdx = qs.findIndex(d => !d.q || d.options.some(o => !o));
+    if (!qs.length) { setupError = "Lisää vähintään yksi kysymys."; render(); return; }
+    if (badIdx >= 0) { setupError = `Kysymykseltä ${badIdx + 1} puuttuu teksti tai vastausvaihtoehto. Täytä kaikki neljä vaihtoehtoa.`; render(); return; }
+    busy = true; render();
+    try {
+      for (let i = 0; i < 10; i++) {
+        const c = genCode();
+        const ref = db.doc(`games/${c}`);
+        const s = await ref.get();
+        if (s.exists) continue;
+        await ref.set({ code: c, hostId: sid, questions: qs, current: -1, phase: "lobby", results: {}, createdAt: Date.now() });
+        local.set("session", { code: c, role: "host" });
+        busy = false;
+        enterGame(c, "host");
+        return;
+      }
+      setupError = "Vapaata pelikoodia ei löytynyt. Yritä uudelleen.";
+    } catch (e) {
+      setupError = e && e.code === "permission-denied"
+        ? "Firebase hylkäsi tallennuksen. Tarkista Firestoren suojaussäännöt."
+        : e && e.code === "resource-exhausted"
+          ? "Firebasen päiväkohtainen ilmaiskiintiö on täynnä. Yritä huomenna uudelleen."
+          : "Pelin luonti epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen.";
+    }
+    busy = false; render();
+  }
+  async function updateGame(patch) {
+    busy = true; render();
+    try { await db.doc(`games/${code}`).update(patch); }
+    catch { toast("Tallennus epäonnistui. Yritä uudelleen."); }
+    busy = false; render();
+  }
+  const startGame = () => updateGame({ current: 0, phase: "answering" });
+  function nextQuestion() {
+    const n = game.current + 1;
+    if (n < game.questions.length) updateGame({ current: n, phase: "answering" });
+    else updateGame({ phase: "final" });
+  }
+  async function reveal() {
+    if (busy || !game || game.phase !== "answering") return;
+    const q = game.current;
+    const present = new Map(players.map(p => [p.id, p.name]));
+    const picks = {}, names = {};
+    answers.forEach(a => {
+      if (present.has(a.id) && Number.isInteger(a.choice) && a.choice >= 0 && a.choice < 4) {
+        picks[a.id] = a.choice;
+        names[a.id] = present.get(a.id);
+      }
+    });
+    await updateGame({ phase: "reveal", [`results.${q}`]: { picks, names } });
+  }
+  async function kick(id) {
+    confirmKick = null;
+    try { await db.doc(`games/${code}/players/${id}`).delete(); }
+    catch { toast("Pelaajan poisto epäonnistui."); }
+    render();
+  }
+  function newGameSameQuestions() {
+    draft = game.questions.map(q => ({ q: q.q, options: [...q.options] }));
+    local.set("draft", draft);
+    leave(true);
+    view = "setup"; render();
+  }
+
+  /* ---------- player actions ---------- */
+  async function joinGame(rawCode, rawName) {
+    joinError = "";
+    const c = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const name = rawName.trim().replace(/\s+/g, " ").slice(0, 24);
+    if (c.length !== 4) { joinError = "Pelikoodissa on neljä merkkiä."; render(); return; }
+    if (!name) { joinError = "Kirjoita nimimerkki, jolla muut näkevät sinut."; render(); return; }
+    busy = true; render();
+    try {
+      const s = await db.doc(`games/${c}`).get();
+      if (!s.exists) { joinError = `Peliä ei löytynyt koodilla ${c}. Tarkista koodi järjestäjältä.`; return; }
+      const g = s.data();
+      if (g.hostId === sid) { local.set("session", { code: c, role: "host" }); enterGame(c, "host"); return; }
+      if (g.phase === "final") { joinError = "Tämä peli on jo päättynyt."; return; }
+      const ps = await db.collection(`games/${c}/players`).get();
+      const mine = ps.docs.find(d => d.id === sid);
+      const taken = ps.docs.some(d => d.id !== sid && String(d.data().name || "").toLowerCase() === name.toLowerCase());
+      if (taken) { joinError = `Nimimerkki ${name} on jo käytössä. Valitse toinen.`; return; }
+      const prev = mine ? mine.data() : null;
+      await db.doc(`games/${c}/players/${sid}`).set({ name, joinedAt: (prev && prev.joinedAt) || Date.now() });
+      myName = name;
+      local.set("session", { code: c, role: "player", name });
+      local.set("lastName", name);
+      enterGame(c, "player");
+    } catch (e) {
+      joinError = e && e.code === "permission-denied"
+        ? "Firebase hylkäsi liittymisen. Tarkista, että nimimerkissä on enintään 24 merkkiä, tai pyydä järjestäjää tarkistamaan suojaussäännöt."
+        : "Liittyminen epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen.";
+    } finally {
+      busy = false;
+      if (view !== "game") render();
+    }
+  }
+  async function answer(i) {
+    if (!game || game.phase !== "answering") return;
+    pendingChoice = i; render();
+    try { await db.doc(`games/${code}/answers/${game.current}_${sid}`).set({ q: game.current, uid: sid, choice: i, at: Date.now() }); }
+    catch { pendingChoice = null; toast("Vastauksen tallennus epäonnistui. Valitse uudelleen."); render(); }
+  }
+  function leave(silent) {
+    unsubAll();
+    stopBots();
+    if (practice) { practice = false; db = realDb; }
+    local.del("session");
+    role = null; code = null; game = null; players = []; answers = [];
+    confirmLeave = false;
+    view = "home";
+    if (!silent) render();
+  }
+
+  /* ---------- practice mode: in-memory store + bot players ---------- */
+  const BOTS = ["Aino", "Eetu", "Helmi", "Ville", "Saara", "Onni"];
+  function makeMemDb() {
+    const docs = new Map();
+    const listeners = new Set();
+    const depth = p => p.split("/").length;
+    const meta = { fromCache: false, hasPendingWrites: false };
+    const snapDoc = path => { const d = docs.get(path); return { id: path.split("/").pop(), exists: !!d, data: () => d ? structuredClone(d) : undefined, metadata: meta }; };
+    const snapCol = path => {
+      const ds = [...docs.keys()].filter(k => k.startsWith(path + "/") && depth(k) === depth(path) + 1).sort().map(snapDoc);
+      return { docs: ds, size: ds.length, empty: !ds.length, docChanges: () => [], metadata: meta };
+    };
+    const notify = changed => queueMicrotask(() => {
+      for (const l of [...listeners]) {
+        if (!listeners.has(l)) continue;
+        if (l.kind === "doc" && l.path === changed) l.fn(snapDoc(l.path));
+        if (l.kind === "col" && changed.startsWith(l.path + "/") && depth(changed) === depth(l.path) + 1) l.fn(snapCol(l.path));
+      }
+    });
+    const listen = (path, kind, fn, snap) => { const l = { path, kind, fn }; listeners.add(l); queueMicrotask(() => { if (listeners.has(l)) fn(snap(path)); }); return () => listeners.delete(l); };
+    const docRef = path => ({
+      id: path.split("/").pop(), path,
+      get: async () => snapDoc(path),
+      set: async d => { docs.set(path, structuredClone(d)); notify(path); },
+      update: async d => {
+        const cur = docs.get(path); if (!cur) throw { code: "not-found" };
+        for (const [k, v] of Object.entries(d)) {
+          const parts = k.split("."); let o = cur;
+          for (const part of parts.slice(0, -1)) { if (!o[part] || typeof o[part] !== "object") o[part] = {}; o = o[part]; }
+          o[parts[parts.length - 1]] = structuredClone(v);
+        }
+        notify(path);
+      },
+      delete: async () => { docs.delete(path); notify(path); },
+      onSnapshot: fn => listen(path, "doc", fn, snapDoc)
+    });
+    const colRef = path => ({
+      path,
+      doc: id => docRef(path + "/" + (id || Math.random().toString(36).slice(2))),
+      get: async () => snapCol(path),
+      onSnapshot: fn => listen(path, "col", fn, snapCol)
+    });
+    return { doc: docRef, collection: colRef };
+  }
+  function stopBots() { botTimers.forEach(clearTimeout); botTimers = []; botQ = null; }
+  function scheduleBots() {
+    if (!game || game.phase !== "answering" || botQ === game.current) return;
+    const bots = players.filter(p => p.bot);
+    if (!bots.length) return;
+    const q = game.current, w = practiceWeights[q] || [1, 1, 1, 1], myDb = db;
+    botQ = q;
+    bots.forEach(p => {
+      botTimers.push(setTimeout(() => {
+        if (!practice || db !== myDb || !game || game.current !== q || game.phase !== "answering") return;
+        let r = Math.random() * w.reduce((a, b) => a + b, 0), c = 0;
+        while (c < 3 && r >= w[c]) { r -= w[c]; c++; }
+        db.doc(`games/${code}/answers/${q}_${p.id}`).set({ q, uid: p.id, choice: c, at: Date.now() });
+      }, 1200 + Math.random() * 4500));
+    });
+  }
+  async function startPractice(name) {
+    unsubAll(); stopBots();
+    if (!practice) realDb = db;
+    practice = true;
+    db = makeMemDb();
+    if (!sid) sid = "harjoittelija";
+    myName = String(name || "").trim().replace(/\s+/g, " ").slice(0, 24) || "Sinä";
+    const qs = examples();
+    // each question gets a hidden popularity profile so bots tend to crowd one answer
+    practiceWeights = qs.map(() => [6, 3, 2, 1].sort(() => Math.random() - 0.5));
+    const c = "TEST";
+    await db.doc(`games/${c}`).set({ code: c, hostId: "harjoitus", questions: qs, current: -1, phase: "lobby", results: {}, createdAt: Date.now() });
+    const bots = BOTS.filter(b => b.toLowerCase() !== myName.toLowerCase()).slice(0, 5);
+    for (let i = 0; i < bots.length; i++) await db.doc(`games/${c}/players/bot${i}`).set({ name: bots[i], joinedAt: i, bot: true });
+    await db.doc(`games/${c}/players/${sid}`).set({ name: myName, joinedAt: 99 });
+    await db.doc(`games/${c}`).update({ current: 0, phase: "answering" });
+    enterGame(c, "player");
+  }
+
+  /* ---------- views ---------- */
+  function brandMark() {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 26 26"); svg.setAttribute("aria-hidden", "true");
+    [["var(--a)", 1, 1, 0], ["var(--b)", 14, 1, 0], ["var(--c)", 1, 14, 0], ["var(--d)", 15, 16, -14]].forEach(([f, x, y, r]) => {
+      const rect = document.createElementNS(ns, "rect");
+      rect.setAttribute("x", x); rect.setAttribute("y", y); rect.setAttribute("width", 11); rect.setAttribute("height", 11);
+      rect.setAttribute("rx", 3); rect.setAttribute("fill", f);
+      if (r) rect.setAttribute("transform", `rotate(${r} ${x + 5.5} ${y + 5.5})`);
+      svg.append(rect);
+    });
+    return svg;
+  }
+  function renderTop() {
+    const top = document.getElementById("top");
+    top.replaceChildren(
+      h("div", { class: "brand" }, brandMark(), "!toohaK"),
+      h("div", { class: "spacer" }),
+      view === "game" && practice ? h("span", { class: "codechip" }, "Harjoitus")
+        : view === "game" && code ? h("span", { class: "codechip", "aria-label": `Pelikoodi ${code}` }, code) : null,
+      view === "game" ? (confirmLeave
+        ? h("button", { class: "btn ghost danger", onclick: () => leave() }, "Vahvista poistuminen")
+        : h("button", { class: "btn ghost", onclick: () => { confirmLeave = true; render(); setTimeout(() => { confirmLeave = false; render(); }, 4000); } }, "Poistu"))
+      : view === "setup" ? h("button", { class: "btn ghost", onclick: () => { view = "home"; render(); } }, "Takaisin") : null
+    );
+  }
+
+  function rulesBlock() {
+    return h("div", { class: "rules small" },
+      h("h3", {}, "Näin pisteet lasketaan"),
+      h("p", {}, "Saat yhden pisteen jokaisesta pelaajasta, joka valitsi eri vaihtoehdon kuin sinä. Mitä harvempi valitsi saman kuin sinä, sitä enemmän pisteitä."),
+      h("p", {}, "Jos olit ainoa, joka valitsi vaihtoehtosi, pisteesi tuplataan. Jos kaikki valitsivat saman, kukaan ei saa pisteitä."),
+      h("p", { class: "muted" }, "Esimerkki: 6 pelaajaa. Kolme valitsee A:n (3 p), kaksi B:n (4 p) ja yksi C:n (5 × 2 = 10 p).")
+    );
+  }
+
+  function viewHome() {
+    const last = local.get("lastName") || "";
+    const codeIn = h("input", { class: "code-input", id: "code", maxlength: "4", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "····", "aria-label": "Pelikoodi",
+      oninput: e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); } });
+    const nameIn = h("input", { id: "name", maxlength: "24", autocomplete: "nickname", placeholder: "Esim. Kaisa", value: last });
+    const submit = e => { e.preventDefault(); joinGame(codeIn.value, nameIn.value); };
+    return h("div", {},
+      h("h1", {}, "Vastaa niin kuin kukaan muu ei vastaa."),
+      h("p", { class: "lead" }, "Jokaisessa kysymyksessä on neljä vaihtoehtoa. Pisteitä saa siitä, että valitsee sen, mitä muut eivät valinneet."),
+      h("div", { class: "section stack", role: "form", onkeydown: e => { if (e.key === "Enter") submit(e); } },
+        h("h2", {}, "Liity peliin"),
+        h("div", {}, h("label", { class: "lbl", for: "code" }, "Pelikoodi"), codeIn),
+        h("div", {}, h("label", { class: "lbl", for: "name" }, "Nimimerkki"), nameIn),
+        joinError ? h("p", { class: "error", role: "alert" }, joinError) : null,
+        h("button", { class: "btn wide", disabled: busy, onclick: submit }, busy ? "Liitytään…" : "Liity peliin")
+      ),
+      h("div", { class: "section stack" },
+        h("h2", {}, "Järjestä peli"),
+        h("p", { class: "muted" }, "Kirjoita kysymykset, jaa koodi pelaajille ja vie peliä eteenpäin kysymys kerrallaan."),
+        h("button", { class: "btn secondary wide", onclick: () => { joinError = ""; view = "setup"; render(); } }, "Kirjoita kysymykset")
+      ),
+      h("div", { class: "section stack" },
+        h("h2", {}, "Kokeile yksin"),
+        h("p", { class: "muted" }, "Harjoituspelissä vastaat kymmeneen kysymykseen viittä tietokonepelaajaa vastaan. Mitään ei tallenneta."),
+        h("button", { class: "btn secondary wide", onclick: () => startPractice(nameIn.value) }, "Aloita harjoituspeli")
+      ),
+      h("div", { class: "section" }, rulesBlock())
+    );
+  }
+
+  function viewSetup() {
+    const cards = draft.map((d, qi) => h("div", { class: "qcard" },
+      h("div", { class: "qcard-head" },
+        h("h3", { style: "margin:0" }, `Kysymys ${qi + 1}`),
+        draft.length > 1 ? h("button", { class: "btn ghost danger", onclick: () => { draft.splice(qi, 1); saveDraft(); render(); } }, "Poista") : null
+      ),
+      h("textarea", { rows: "2", placeholder: "Kirjoita kysymys", "aria-label": `Kysymyksen ${qi + 1} teksti`, value: d.q,
+        oninput: e => { d.q = e.target.value; saveDraft(); } }),
+      d.options.map((o, oi) => h("div", { class: `optin o${oi}` },
+        h("span", { class: "tile", "aria-hidden": "true" }, LETTERS[oi]),
+        h("input", { value: o, maxlength: "60", placeholder: `Vaihtoehto ${LETTERS[oi]}`, "aria-label": `Kysymyksen ${qi + 1} vaihtoehto ${LETTERS[oi]}`,
+          oninput: e => { d.options[oi] = e.target.value; saveDraft(); } })
+      ))
+    ));
+    return h("div", {},
+      h("h1", {}, "Kysymykset"),
+      h("p", { class: "lead" }, "Jokaiseen kysymykseen tulee neljä vaihtoehtoa. Hyvä kysymys on sellainen, jossa kaikki vaihtoehdot houkuttelevat."),
+      h("div", { class: "stack section" }, cards),
+      h("div", { class: "btnrow", style: "margin-top:14px" },
+        h("button", { class: "btn secondary", onclick: () => { draft.push(blankQ()); saveDraft(); render(); } }, "Lisää kysymys"),
+        h("button", { class: "btn ghost", onclick: () => { draft = examples(); saveDraft(); render(); } }, "Käytä esimerkkikysymyksiä")
+      ),
+      h("div", { class: "section stack" },
+        setupError ? h("p", { class: "error", role: "alert" }, setupError) : null,
+        h("button", { class: "btn wide", disabled: busy, onclick: createGame }, busy ? "Luodaan…" : `Luo peli (${draft.length} ${plural(draft.length, "kysymys", "kysymystä")})`)
+      )
+    );
+  }
+
+  function examples() {
+    return [
+      { q: "Paras pizzatäyte?", options: ["Ananas", "Pepperoni", "Herkkusienet", "Aurajuusto"] },
+      { q: "Kesämökin tärkein asia?", options: ["Sauna", "Laituri", "Hiljaisuus", "Wifi"] },
+      { q: "Minkä supervoiman ottaisit?", options: ["Lentäminen", "Näkymättömyys", "Ajatustenluku", "Aikamatkustus"] },
+      { q: "Mihin aikaan heräisit mieluiten?", options: ["Klo 5.30", "Klo 7.00", "Klo 9.00", "Klo 11.00"] },
+      { q: "Paras vuodenaika?", options: ["Kevät", "Kesä", "Syksy", "Talvi"] },
+      { q: "Mikä eläin olisit?", options: ["Karhu", "Kettu", "Pöllö", "Orava"] },
+      { q: "Paras jäätelömaku?", options: ["Vanilja", "Suklaa", "Mansikka", "Salmiakki"] },
+      { q: "Mihin lähtisit huomenna?", options: ["Lappiin", "Lissaboniin", "Tokioon", "New Yorkiin"] },
+      { q: "Kokouksen pahin piirre?", options: ["Venyy yli ajan", "Ei asialistaa", "Kamerat kiinni", "Turhia osallistujia"] },
+      { q: "Paras perjantai-ilta?", options: ["Sohva ja sarja", "Ravintola", "Sauna", "Bileet"] }
+    ];
+  }
+
+  function playerList(opts) {
+    const answeredIds = new Set(answers.map(a => a.id));
+    if (!players.length) return h("p", { class: "muted" }, "Kukaan ei ole vielä liittynyt.");
+    return h("ul", { class: "plist" }, players.map(p => h("li", {},
+      opts.showAnswered ? h("span", { class: "dot" + (answeredIds.has(p.id) ? " on" : ""), "aria-label": answeredIds.has(p.id) ? "vastannut" : "ei vielä vastannut" }) : null,
+      h("span", { class: "nm" }, p.name, p.id === sid ? " (sinä)" : ""),
+      opts.showAnswered ? h("span", { class: "muted small" }, answeredIds.has(p.id) ? "Vastasi" : "Miettii") : null,
+      role === "host" ? (confirmKick === p.id
+        ? h("button", { class: "btn ghost danger", onclick: () => kick(p.id) }, "Vahvista poisto")
+        : h("button", { class: "btn ghost", "aria-label": `Poista ${p.name}`, onclick: () => { confirmKick = p.id; render(); } }, "Poista"))
+        : null
+    )));
+  }
+
+  function optionButtons(q, interactive, picked) {
+    return h("div", { class: "opts" + (picked != null ? " has-pick" : "") },
+      q.options.map((o, i) => h(interactive ? "button" : "div", {
+        class: `opt o${i}` + (picked === i ? " picked" : ""),
+        disabled: interactive ? null : null,
+        "aria-pressed": interactive ? String(picked === i) : null,
+        onclick: interactive ? () => answer(i) : null
+      },
+        h("span", { class: "tile", "aria-hidden": "true" }, LETTERS[i]),
+        h("span", {}, o),
+        picked === i ? h("span", { class: "check" }, "Valintasi") : null
+      ))
+    );
+  }
+
+  function revealBlock(qi) {
+    const q = game.questions[qi];
+    const r = (game.results || {})[qi] || { picks: {}, names: {} };
+    const { counts, pts, N, minC } = scoreRound(r);
+    const myPick = r.picks ? r.picks[sid] : undefined;
+    const out = [];
+    if (role === "player") {
+      if (myPick === undefined) {
+        out.push(h("div", { class: "section", style: "margin-top:0;margin-bottom:24px" },
+          h("h2", {}, "Et vastannut tähän kysymykseen"),
+          h("p", { class: "muted" }, "Tästä kierroksesta ei tule pisteitä.")));
+      } else {
+        const k = counts[myPick];
+        const others = N - k;
+        out.push(h("div", { class: `o${myPick}`, style: "margin-bottom:24px" },
+          h("div", { class: "points" }, h("b", {}, "+" + pts[sid]), h("span", { class: "muted" }, plural(pts[sid], "piste", "pistettä"))),
+          h("p", { class: "muted" },
+            k === 1
+              ? `Olit ainoa, joka valitsi tämän. ${others} ${plural(others, "pelaaja", "pelaajaa")} vastasi toisin, ja pisteet tuplattiin.`
+              : k === N
+                ? "Kaikki valitsivat saman vaihtoehdon, joten kukaan ei saanut pisteitä."
+                : `${others} ${plural(others, "pelaaja", "pelaajaa")} vastasi toisin, ja ${k - 1} ${plural(k - 1, "muu", "muuta")} valitsi saman kuin sinä.`)
+        ));
+      }
+    }
+    const pickers = [[], [], [], []];
+    Object.entries(r.picks || {}).forEach(([id, c]) => pickers[c].push({ id, name: (r.names || {})[id] || "Pelaaja" }));
+    out.push(h("div", { class: "rows" }, q.options.map((o, i) => h("div", { class: `row o${i}` },
+      h("div", { class: "row-head" },
+        h("span", { class: "tile", "aria-hidden": "true" }, LETTERS[i]),
+        h("span", { class: "txt" }, o),
+        counts[i] === 1 ? h("span", { class: "tag" }, "Ainoa") : counts[i] > 0 && counts[i] === minC && counts.filter(c => c > 0).length > 1 ? h("span", { class: "tag" }, "Harvinaisin") : null,
+        h("span", { class: "cnt", "aria-label": `${counts[i]} vastausta` }, counts[i])
+      ),
+      h("div", { class: "bar", "aria-hidden": "true" }, h("i", { style: `width:${N ? (counts[i] / N) * 100 : 0}%` })),
+      pickers[i].length
+        ? h("div", { class: "chips" }, pickers[i].map(p => h("span", { class: "chip" + (p.id === sid ? " me" : "") }, p.name, " +" + pts[p.id])))
+        : h("p", { class: "muted small", style: "margin:0" }, "Ei kukaan")
+    ))));
+    return out;
+  }
+
+  function boardBlock(limit) {
+    const list = standings();
+    const shown = limit ? list.slice(0, limit) : list;
+    const meRow = list.find(e => e.id === sid);
+    return h("div", {},
+      h("ol", { class: "board" }, shown.map(e => h("li", { class: (e.id === sid ? "me " : "") + (e.rank === 1 ? "first" : "") },
+        h("span", { class: "rk" }, e.rank + "."),
+        h("span", { class: "nm" }, e.name, e.id === sid ? " (sinä)" : ""),
+        h("span", { class: "sc" }, e.score)
+      ))),
+      limit && meRow && !shown.includes(meRow) ? h("p", { class: "small", style: "margin-top:10px" }, `Sinä: ${meRow.rank}. sija, ${meRow.score} ${plural(meRow.score, "piste", "pistettä")}`) : null
+    );
+  }
+
+  function podium(list) {
+    const top = list.slice(0, 3);
+    const colour = { 1: "o1", 2: "o2", 3: "o0" };
+    return h("div", { class: "podium", role: "list", "aria-label": "Palkintokoroke" },
+      top.map((e, i) => {
+        const place = i + 1;
+        return h("div", { class: `pod pod${place} ${colour[place]}` + (e.id === sid ? " me" : ""), role: "listitem" },
+          h("span", { class: "pod-name" }, e.name, e.id === sid ? " (sinä)" : ""),
+          h("span", { class: "pod-score" }, `${e.score} ${plural(e.score, "piste", "pistettä")}`),
+          h("div", { class: "pod-block" }, h("span", {}, e.rank + "."))
+        );
+      }));
+  }
+
+  function viewGame() {
+    if (!game) return h("div", {}, h("p", { class: "muted" }, "Haetaan peliä…"));
+    if (role === "player" && kicked) {
+      return h("div", { class: "stack" },
+        h("h1", {}, "Sinut poistettiin pelistä"),
+        h("p", { class: "lead" }, "Järjestäjä poisti sinut pelaajalistalta. Voit liittyä uudelleen samalla koodilla."),
+        h("button", { class: "btn", onclick: () => leave() }, "Takaisin alkuun"));
+    }
+    const total = game.questions.length;
+    const qi = game.current;
+    const q = qi >= 0 ? game.questions[qi] : null;
+    const isHost = role === "host";
+
+    if (game.phase === "lobby") {
+      if (isHost) {
+        return h("div", {},
+          h("p", { class: "muted", style: "margin:0" }, "Pelikoodi"),
+          h("div", { class: "codetiles", "aria-label": `Pelikoodi ${code}` }, code.split("").map((ch, i) => h("span", { class: `o${i}` }, ch))),
+          h("p", { class: "lead" }, "Pelaajat avaavat tämän saman sivun ja syöttävät koodin."),
+          h("div", { class: "section" },
+            h("h2", {}, `Pelaajat (${players.length})`),
+            playerList({}),
+          ),
+          h("div", { class: "section stack" },
+            h("p", { class: "muted small", style: "margin:0" }, `${total} ${plural(total, "kysymys", "kysymystä")} valmiina.`),
+            h("button", { class: "btn wide", disabled: busy || players.length < 2, onclick: startGame }, "Aloita peli"),
+            players.length < 2 ? h("p", { class: "muted small center" }, "Peli tarvitsee vähintään kaksi pelaajaa.") : null
+          ),
+          h("div", { class: "section" }, rulesBlock())
+        );
+      }
+      const me = players.find(p => p.id === sid);
+      return h("div", {},
+        h("h1", {}, `Olet mukana${me ? ", " : ""}${me ? me.name : ""}.`),
+        h("p", { class: "lead" }, "Peli alkaa, kun järjestäjä käynnistää sen. Pidä tämä sivu auki."),
+        h("div", { class: "section" }, h("h2", {}, `Pelaajat (${players.length})`), playerList({})),
+        h("div", { class: "section" }, rulesBlock())
+      );
+    }
+
+    if (game.phase === "answering") {
+      const answeredCount = players.filter(p => answers.some(a => a.id === p.id)).length;
+      const head = [h("p", { class: "qnum" }, `Kysymys ${qi + 1}/${total}`), h("h1", { class: "qtext" }, q.q)];
+      const progress = [
+        h("p", { class: "small", style: "margin:22px 0 0" }, `${answeredCount}/${players.length} vastannut`),
+        h("div", { class: "progress", "aria-hidden": "true" }, h("i", { style: `width:${players.length ? answeredCount / players.length * 100 : 0}%` }))
+      ];
+      if (isHost) {
+        return h("div", {}, head, optionButtons(q, false, null), progress,
+          playerList({ showAnswered: true }),
+          h("div", { class: "section stack" },
+            h("button", { class: "btn secondary wide", disabled: busy || answeredCount === 0, onclick: reveal }, "Näytä vastaukset nyt"),
+            h("p", { class: "muted small center" }, "Vastaukset näytetään automaattisesti, kun kaikki ovat vastanneet.")
+          )
+        );
+      }
+      const mine = answers.find(a => a.id === sid);
+      const picked = pendingChoice != null ? pendingChoice : mine ? mine.choice : null;
+      return h("div", {}, head, optionButtons(q, true, picked),
+        picked != null ? h("p", { class: "muted small", style: "margin-top:14px" }, "Voit vaihtaa vastausta, kunnes kaikki ovat vastanneet.") : null,
+        progress
+      );
+    }
+
+    if (game.phase === "reveal") {
+      const last = qi + 1 >= total;
+      return h("div", {},
+        h("p", { class: "qnum" }, `Kysymys ${qi + 1}/${total}`),
+        h("h1", { class: "qtext" }, q.q),
+        revealBlock(qi),
+        h("div", { class: "section" }, h("h2", {}, "Tilanne"), boardBlock(isHost ? 0 : 5)),
+        isHost || practice
+          ? h("div", { class: "section" }, h("button", { class: "btn wide", disabled: busy, onclick: nextQuestion }, last ? "Näytä lopputulokset" : "Seuraava kysymys"))
+          : h("p", { class: "muted small section center" }, last ? "Järjestäjä näyttää kohta lopputulokset." : "Järjestäjä siirtyy kohta seuraavaan kysymykseen.")
+      );
+    }
+
+    if (game.phase === "final") {
+      const list = standings();
+      const me = list.find(e => e.id === sid);
+      const winners = list.filter(e => e.rank === 1);
+      return h("div", {},
+        h("h1", {}, winners.length ? (winners.length === 1 ? `${winners[0].name} voitti.` : `Tasapeli: ${winners.map(w => w.name).join(" ja ")}.`) : "Peli päättyi."),
+        me ? h("p", { class: "lead" }, `Sijoituksesi: ${me.rank}. sija, ${me.score} ${plural(me.score, "piste", "pistettä")}.`) : null,
+        podium(list),
+        list.length > 3 ? h("div", { class: "section" }, h("h2", {}, "Muut sijoitukset"),
+          h("ol", { class: "board" }, list.slice(3).map(e => h("li", { class: e.id === sid ? "me" : "" },
+            h("span", { class: "rk" }, e.rank + "."),
+            h("span", { class: "nm" }, e.name, e.id === sid ? " (sinä)" : ""),
+            h("span", { class: "sc" }, e.score))))) : null,
+        practice
+          ? h("div", { class: "section stack" },
+              h("button", { class: "btn wide", onclick: () => { const n = myName; leave(true); startPractice(n); } }, "Pelaa uudelleen"),
+              h("button", { class: "btn secondary wide", onclick: () => leave() }, "Takaisin alkuun"))
+        : isHost
+          ? h("div", { class: "section stack" },
+              h("button", { class: "btn wide", onclick: newGameSameQuestions }, "Uusi peli samoilla kysymyksillä"),
+              h("button", { class: "btn secondary wide", onclick: () => leave() }, "Lopeta"))
+          : h("div", { class: "section" }, h("button", { class: "btn secondary wide", onclick: () => leave() }, "Takaisin alkuun"))
+      );
+    }
+    return h("p", {}, "Tuntematon pelin tila.");
+  }
+
+  let unavailableReason = "auth";
+  function viewUnavailable() {
+    return h("div", { class: "stack" },
+      h("h1", {}, unavailableReason === "config" ? "Firebase-asetukset puuttuvat" : "Yhteys Firebaseen epäonnistui"),
+      h("p", { class: "lead" }, unavailableReason === "config"
+        ? "Liitä oma firebaseConfig index.html-tiedoston alkuun ja lataa tiedosto uudelleen GitHubiin."
+        : "Tarkista, että anonyymi kirjautuminen on käytössä ja että sivun osoite on lisätty Firebasen sallittuihin verkkotunnuksiin. Lataa sitten sivu uudelleen."),
+      h("p", { class: "muted" }, "Harjoituspeli toimii myös ilman tallennusta."),
+      h("button", { class: "btn", onclick: () => startPractice("") }, "Aloita harjoituspeli")
+    );
+  }
+
+  function render() {
+    renderTop();
+    const app = document.getElementById("app");
+    // keep focus/inputs on the home & setup screens stable: they only re-render on explicit actions
+    let node;
+    if (view === "loading") node = h("p", { class: "muted" }, "Ladataan…");
+    else if (view === "unavailable") node = viewUnavailable();
+    else if (view === "home") node = viewHome();
+    else if (view === "setup") node = viewSetup();
+    else node = viewGame();
+    // preserve typed values on home screen re-render
+    if (view === "home") {
+      const oc = document.getElementById("code"), on = document.getElementById("name");
+      const cv = oc ? oc.value : null, nv = on ? on.value : null;
+      app.replaceChildren(node);
+      if (cv != null) document.getElementById("code").value = cv;
+      if (nv != null) document.getElementById("name").value = nv;
+    } else {
+      app.replaceChildren(node);
+    }
+  }
+
+  /* ---------- boot ---------- */
+  async function boot() {
+    render();
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("LIITÄ")) {
+      unavailableReason = "config"; view = "unavailable"; render(); return;
+    }
+    try {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      db = makeFirestoreDb(getFirestore(app));
+      await auth.authStateReady();
+      if (!auth.currentUser) await signInAnonymously(auth);
+      sid = auth.currentUser.uid;
+    } catch (e) {
+      console.error(e);
+      db = null; unavailableReason = "auth"; view = "unavailable"; render(); return;
+    }
+    const sess = local.get("session");
+    if (sess && sess.code) {
+      try {
+        const s = await db.doc(`games/${sess.code}`).get();
+        if (s.exists) {
+          const g = s.data();
+          if (sess.role === "host" && g.hostId === sid) { enterGame(sess.code, "host"); return; }
+          if (sess.role === "player") {
+            const p = await db.doc(`games/${sess.code}/players/${sid}`).get();
+            if (p.exists) { myName = p.data().name; enterGame(sess.code, "player"); return; }
+          }
+        }
+      } catch {}
+      local.del("session");
+    }
+    view = "home"; render();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -156,6 +156,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.8}
 /* question editor */
 .qcard{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:16px}
 .qcard-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.qcard.locked{background:transparent;border-style:dashed}
 .optin{display:flex;align-items:center;gap:10px;margin-top:8px}
 .optin .tile{width:36px;height:36px;font-size:16px;border-radius:9px}
 .optin input{min-height:46px;padding:10px 12px}
@@ -198,8 +199,8 @@ const firebaseConfig = {
 /* ===================================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
-import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsOnSnapshot } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsOnSnapshot, query as fsQuery, where as fsWhere } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
 (() => {
   "use strict";
@@ -228,7 +229,8 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
         onSnapshot: (fn, err) => fsOnSnapshot(r, s => fn(wrapQuery(s)), err)
       };
     };
-    return { doc: docRef, collection: colRef };
+    const gamesByHost = async uid => wrapQuery(await getDocs(fsQuery(fsCol(fs, "games"), fsWhere("hostId", "==", uid))));
+    return { doc: docRef, collection: colRef, gamesByHost };
   }
 
   const LETTERS = ["A", "B", "C", "D"];
@@ -268,6 +270,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
 
   /* ---------- state ---------- */
   let db = null, sid = null;
+  let auth = null, hostUser = null, myGames = null, authBusy = false, authError = "";
   let view = "loading";       // loading | unavailable | home | setup | game
   let role = null, code = null, myName = "";
   let game = null, players = [], playersLoaded = false, answers = [], ansQ = null;
@@ -278,6 +281,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
   let joinError = "", setupError = "";
   let draft = local.get("draft") || [blankQ()];
   let draftTimer;
+  let editing = false, editDraft = [], editError = "", editorMounted = false;
   let practice = false, realDb = null, botTimers = [], botQ = null, practiceWeights = [];
 
   function blankQ() { return { q: "", options: ["", "", "", ""] }; }
@@ -337,6 +341,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     code = c; role = r; view = "game";
     game = null; players = []; playersLoaded = false; answers = [];
     wasIn = false; kicked = false; confirmKick = null; confirmLeave = false; pendingChoice = null;
+    editing = false; editDraft = [];
     unsubAll();
     unsubs.push(db.doc(`games/${code}`).onSnapshot(s => {
       if (!s.exists) { game = null; render(); return; }
@@ -401,7 +406,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
       setupError = "Vapaata pelikoodia ei löytynyt. Yritä uudelleen.";
     } catch (e) {
       setupError = e && e.code === "permission-denied"
-        ? "Firebase hylkäsi tallennuksen. Tarkista Firestoren suojaussäännöt."
+        ? "Firebase hylkäsi tallennuksen. Varmista, että olet kirjautunut järjestäjäksi ja että Firestoren suojaussäännöt on päivitetty."
         : e && e.code === "resource-exhausted"
           ? "Firebasen päiväkohtainen ilmaiskiintiö on täynnä. Yritä huomenna uudelleen."
           : "Pelin luonti epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen.";
@@ -445,6 +450,57 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     leave(true);
     view = "setup"; render();
   }
+
+  /* ---------- organizer sign-in (Google); players stay anonymous ---------- */
+  function readHostUser() {
+    const u = auth && auth.currentUser;
+    hostUser = u && !u.isAnonymous ? { email: u.email || "", name: u.displayName || u.email || "Järjestäjä" } : null;
+    sid = u ? u.uid : sid;
+  }
+  async function signInHost() {
+    authError = ""; authBusy = true; render();
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      try { await signInWithPopup(auth, provider); }
+      catch (e) {
+        if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) {
+          await signInWithRedirect(auth, provider); return;
+        }
+        throw e;
+      }
+      local.del("session");
+      readHostUser(); myGames = null; loadMyGames();
+    } catch (e) {
+      if (!(e && (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request"))) {
+        authError = e && e.code === "auth/unauthorized-domain"
+          ? "Tätä osoitetta ei ole lisätty Firebasen sallittuihin verkkotunnuksiin."
+          : e && e.code === "auth/operation-not-allowed"
+            ? "Google-kirjautuminen ei ole käytössä Firebase-projektissa."
+            : "Kirjautuminen epäonnistui. Yritä uudelleen.";
+      }
+    }
+    authBusy = false; render();
+  }
+  async function signOutHost() {
+    authBusy = true; render();
+    try {
+      leave(true);
+      await signOut(auth);
+      await signInAnonymously(auth);
+      readHostUser(); myGames = null;
+    } catch { authError = "Uloskirjautuminen epäonnistui. Lataa sivu uudelleen."; }
+    authBusy = false; view = "home"; render();
+  }
+  async function loadMyGames() {
+    if (!hostUser || !db || !db.gamesByHost) return;
+    try {
+      const s = await db.gamesByHost(sid);
+      myGames = s.docs.map(d => d.data()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 15);
+    } catch { myGames = []; }
+    if (view === "home") render();
+  }
+  const PHASE_LABEL = { lobby: "Odottaa pelaajia", answering: "Käynnissä", reveal: "Käynnissä", final: "Päättynyt" };
 
   /* ---------- player actions ---------- */
   async function joinGame(rawCode, rawName) {
@@ -493,6 +549,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     role = null; code = null; game = null; players = []; answers = [];
     confirmLeave = false;
     view = "home";
+    if (hostUser) loadMyGames();
     if (!silent) render();
   }
 
@@ -630,8 +687,25 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
       ),
       h("div", { class: "section stack" },
         h("h2", {}, "Järjestä peli"),
-        h("p", { class: "muted" }, "Kirjoita kysymykset, jaa koodi pelaajille ja vie peliä eteenpäin kysymys kerrallaan."),
-        h("button", { class: "btn secondary wide", onclick: () => { joinError = ""; view = "setup"; render(); } }, "Kirjoita kysymykset")
+        hostUser
+          ? [
+              h("p", { class: "muted small", style: "margin:0" }, `Kirjautuneena järjestäjänä: ${hostUser.email || hostUser.name}`),
+              h("button", { class: "btn secondary wide", onclick: () => { joinError = ""; view = "setup"; render(); } }, "Kirjoita kysymykset"),
+              myGames && myGames.length ? h("div", {},
+                h("h3", { style: "margin-top:10px" }, "Omat pelini"),
+                h("ul", { class: "plist" }, myGames.map(g => h("li", {},
+                  h("span", { class: "codechip" }, g.code),
+                  h("span", { class: "nm" }, `${g.questions.length} ${plural(g.questions.length, "kysymys", "kysymystä")}`,
+                    h("span", { class: "muted small" }, ` · ${PHASE_LABEL[g.phase] || ""}`)),
+                  h("button", { class: "btn ghost", onclick: () => { local.set("session", { code: g.code, role: "host" }); enterGame(g.code, "host"); } }, g.phase === "final" ? "Tulokset" : "Jatka")
+                )))) : null,
+              h("button", { class: "btn ghost", disabled: authBusy, onclick: signOutHost }, "Kirjaudu ulos")
+            ]
+          : [
+              h("p", { class: "muted" }, "Pelin järjestäjä kirjautuu Google-tilillä. Pelaajat eivät tarvitse tiliä: heille riittää pelikoodi ja nimimerkki."),
+              h("button", { class: "btn secondary wide", disabled: authBusy, onclick: signInHost }, authBusy ? "Kirjaudutaan…" : "Kirjaudu järjestäjäksi Googlella")
+            ],
+        authError ? h("p", { class: "error", role: "alert" }, authError) : null
       ),
       h("div", { class: "section stack" },
         h("h2", {}, "Kokeile yksin"),
@@ -642,27 +716,64 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     );
   }
 
+  /* ---------- question editor (shared by setup and live game) ---------- */
+  function randomQuestion(list) {
+    const used = new Set(list.map(q => String(q.q || "").trim().toLowerCase()));
+    let pool = QUESTION_BANK.filter(b => !used.has(b[0].toLowerCase()));
+    if (!pool.length) pool = QUESTION_BANK;
+    const [q, ...options] = pool[Math.floor(Math.random() * pool.length)];
+    return { q, options: [...options] };
+  }
+  function questionEditor(list, locked, onInput, rerender) {
+    const cards = list.map((d, qi) => {
+      if (qi < locked) {
+        return h("div", { class: "qcard locked" },
+          h("div", { class: "qcard-head" },
+            h("h3", { style: "margin:0" }, `Kysymys ${qi + 1}`),
+            h("span", { class: "muted small" }, "Pelattu, lukittu")),
+          h("p", { style: "margin:0;font-weight:600" }, d.q),
+          h("p", { class: "muted small", style: "margin:4px 0 0" }, d.options.join(" · ")));
+      }
+      return h("div", { class: "qcard" },
+        h("div", { class: "qcard-head" },
+          h("h3", { style: "margin:0" }, `Kysymys ${qi + 1}`),
+          h("div", { class: "btnrow", style: "gap:2px" },
+            h("button", { class: "btn ghost", "aria-label": `Arvo kysymyksen ${qi + 1} tilalle uusi kysymys`,
+              onclick: () => { list[qi] = randomQuestion(list); rerender(); } }, "Arvo"),
+            list.length > 1 ? h("button", { class: "btn ghost danger", "aria-label": `Poista kysymys ${qi + 1}`,
+              onclick: () => { list.splice(qi, 1); rerender(); } }, "Poista") : null)
+        ),
+        h("textarea", { rows: "2", placeholder: "Kirjoita kysymys", "aria-label": `Kysymyksen ${qi + 1} teksti`, value: d.q,
+          oninput: e => { d.q = e.target.value; onInput(); } }),
+        d.options.map((o, oi) => h("div", { class: `optin o${oi}` },
+          h("span", { class: "tile", "aria-hidden": "true" }, LETTERS[oi]),
+          h("input", { value: o, maxlength: "60", placeholder: `Vaihtoehto ${LETTERS[oi]}`, "aria-label": `Kysymyksen ${qi + 1} vaihtoehto ${LETTERS[oi]}`,
+            oninput: e => { d.options[oi] = e.target.value; onInput(); } })
+        ))
+      );
+    });
+    return h("div", {},
+      h("div", { class: "stack" }, cards),
+      h("div", { class: "btnrow", style: "margin-top:14px" },
+        h("button", { class: "btn secondary", onclick: () => { list.push(blankQ()); rerender(); } }, "Lisää kysymys"),
+        h("button", { class: "btn secondary", onclick: () => { list.push(randomQuestion(list)); rerender(); } }, "Lisää arvottu kysymys")
+      )
+    );
+  }
+  function invalidIndex(qs, offset) {
+    const bad = qs.findIndex(d => !d.q || d.options.some(o => !o));
+    return bad < 0 ? -1 : bad + offset;
+  }
+  const trimQ = d => ({ q: String(d.q || "").trim(), options: d.options.map(o => String(o || "").trim()) });
+
   function viewSetup() {
-    const cards = draft.map((d, qi) => h("div", { class: "qcard" },
-      h("div", { class: "qcard-head" },
-        h("h3", { style: "margin:0" }, `Kysymys ${qi + 1}`),
-        draft.length > 1 ? h("button", { class: "btn ghost danger", onclick: () => { draft.splice(qi, 1); saveDraft(); render(); } }, "Poista") : null
-      ),
-      h("textarea", { rows: "2", placeholder: "Kirjoita kysymys", "aria-label": `Kysymyksen ${qi + 1} teksti`, value: d.q,
-        oninput: e => { d.q = e.target.value; saveDraft(); } }),
-      d.options.map((o, oi) => h("div", { class: `optin o${oi}` },
-        h("span", { class: "tile", "aria-hidden": "true" }, LETTERS[oi]),
-        h("input", { value: o, maxlength: "60", placeholder: `Vaihtoehto ${LETTERS[oi]}`, "aria-label": `Kysymyksen ${qi + 1} vaihtoehto ${LETTERS[oi]}`,
-          oninput: e => { d.options[oi] = e.target.value; saveDraft(); } })
-      ))
-    ));
+    if (!hostUser) { view = "home"; return viewHome(); }
     return h("div", {},
       h("h1", {}, "Kysymykset"),
-      h("p", { class: "lead" }, "Jokaiseen kysymykseen tulee neljä vaihtoehtoa. Voit kirjoittaa omat kysymykset tai arpoa 10 kysymystä sadan valmiin kysymyksen joukosta."),
-      h("div", { class: "stack section" }, cards),
-      h("div", { class: "btnrow", style: "margin-top:14px" },
-        h("button", { class: "btn secondary", onclick: () => { draft.push(blankQ()); saveDraft(); render(); } }, "Lisää kysymys"),
-        h("button", { class: "btn ghost", onclick: () => { draft = examples(); saveDraft(); render(); } }, "Arvo 10 esimerkkikysymystä")
+      h("p", { class: "lead" }, "Jokaiseen kysymykseen tulee neljä vaihtoehtoa. Kirjoita omat kysymykset tai arvo niitä sadan valmiin kysymyksen joukosta. Voit lisätä ja muokata kysymyksiä myös pelin luomisen jälkeen."),
+      h("div", { class: "section" }, questionEditor(draft, 0, saveDraft, () => { saveDraft(); render(); })),
+      h("div", { class: "btnrow", style: "margin-top:4px" },
+        h("button", { class: "btn ghost", onclick: () => { draft = examples(); saveDraft(); render(); } }, "Korvaa kaikki: arvo 10 kysymystä")
       ),
       h("div", { class: "section stack" },
         setupError ? h("p", { class: "error", role: "alert" }, setupError) : null,
@@ -670,6 +781,51 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
       )
     );
   }
+
+  /* ---------- editing a live game ---------- */
+  function lockedCount() {
+    if (!game) return 0;
+    if (game.phase === "lobby") return 0;
+    if (game.phase === "final") return game.questions.length;
+    return game.current + 1;
+  }
+  function openEditor() {
+    editDraft = game.questions.map(q => ({ q: q.q, options: [...q.options] }));
+    editError = ""; editing = true; render(true);
+  }
+  function closeEditor() { editing = false; editDraft = []; editError = ""; render(true); }
+  async function saveEdits() {
+    const locked = lockedCount();
+    const tail = editDraft.slice(locked).map(trimQ);
+    const bad = invalidIndex(tail, locked);
+    if (bad >= 0) { editError = `Kysymykseltä ${bad + 1} puuttuu teksti tai vastausvaihtoehto. Täytä kaikki neljä vaihtoehtoa.`; render(true); return; }
+    const qs = game.questions.slice(0, locked).concat(tail);
+    if (!qs.length) { editError = "Pelissä pitää olla vähintään yksi kysymys."; render(true); return; }
+    busy = true; render(true);
+    try {
+      await db.doc(`games/${code}`).update({ questions: qs });
+      busy = false; closeEditor();
+      toast("Kysymykset tallennettu.");
+    } catch {
+      busy = false; editError = "Tallennus epäonnistui. Yritä uudelleen."; render(true);
+    }
+  }
+  function viewEditGame() {
+    const locked = lockedCount();
+    return h("div", {},
+      h("h1", {}, "Muokkaa kysymyksiä"),
+      h("p", { class: "lead" }, locked
+        ? "Pelatut kysymykset on lukittu. Voit muokata tulevia kysymyksiä ja lisätä uusia loppuun. Peli jatkuu taustalla."
+        : "Voit muokata, poistaa ja lisätä kysymyksiä ennen kuin peli alkaa."),
+      h("div", { class: "section" }, questionEditor(editDraft, locked, () => {}, () => render(true))),
+      h("div", { class: "section stack" },
+        editError ? h("p", { class: "error", role: "alert" }, editError) : null,
+        h("button", { class: "btn wide", disabled: busy, onclick: saveEdits }, busy ? "Tallennetaan…" : "Tallenna muutokset"),
+        h("button", { class: "btn secondary wide", onclick: closeEditor }, "Peruuta")
+      )
+    );
+  }
+  const editButton = () => h("button", { class: "btn secondary wide", onclick: openEditor }, "Muokkaa kysymyksiä");
 
   const QUESTION_BANK = [
     ["Paras pizzatäyte?", "Ananas", "Pepperoni", "Herkkusienet", "Aurajuusto"],
@@ -891,6 +1047,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     const qi = game.current;
     const q = qi >= 0 ? game.questions[qi] : null;
     const isHost = role === "host";
+    if (isHost && editing) return viewEditGame();
 
     if (game.phase === "lobby") {
       if (isHost) {
@@ -905,6 +1062,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
           h("div", { class: "section stack" },
             h("p", { class: "muted small", style: "margin:0" }, `${total} ${plural(total, "kysymys", "kysymystä")} valmiina.`),
             h("button", { class: "btn wide", disabled: busy || players.length < 2, onclick: startGame }, "Aloita peli"),
+            editButton(),
             players.length < 2 ? h("p", { class: "muted small center" }, "Peli tarvitsee vähintään kaksi pelaajaa.") : null
           ),
           h("div", { class: "section" }, rulesBlock())
@@ -931,6 +1089,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
           playerList({ showAnswered: true }),
           h("div", { class: "section stack" },
             h("button", { class: "btn secondary wide", disabled: busy || answeredCount === 0, onclick: reveal }, "Näytä vastaukset nyt"),
+            editButton(),
             h("p", { class: "muted small center" }, "Vastaukset näytetään automaattisesti, kun kaikki ovat vastanneet.")
           )
         );
@@ -951,7 +1110,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
         revealBlock(qi),
         h("div", { class: "section" }, h("h2", {}, "Tilanne"), boardBlock(isHost ? 0 : 5)),
         isHost || practice
-          ? h("div", { class: "section" }, h("button", { class: "btn wide", disabled: busy, onclick: nextQuestion }, last ? "Näytä lopputulokset" : "Seuraava kysymys"))
+          ? h("div", { class: "section stack" }, h("button", { class: "btn wide", disabled: busy, onclick: nextQuestion }, last ? "Näytä lopputulokset" : "Seuraava kysymys"), isHost ? editButton() : null)
           : h("p", { class: "muted small section center" }, last ? "Järjestäjä näyttää kohta lopputulokset." : "Järjestäjä siirtyy kohta seuraavaan kysymykseen.")
       );
     }
@@ -995,8 +1154,10 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     );
   }
 
-  function render() {
+  function render(force) {
     renderTop();
+    // while the host edits questions, live game updates must not wipe what they are typing
+    if (view === "game" && editing && editorMounted && !force) return;
     const app = document.getElementById("app");
     // keep focus/inputs on the home & setup screens stable: they only re-render on explicit actions
     let node;
@@ -1015,6 +1176,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     } else {
       app.replaceChildren(node);
     }
+    editorMounted = view === "game" && editing && role === "host";
   }
 
   /* ---------- boot ---------- */
@@ -1025,11 +1187,11 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
     }
     try {
       const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
+      auth = getAuth(app);
       db = makeFirestoreDb(getFirestore(app));
       await auth.authStateReady();
       if (!auth.currentUser) await signInAnonymously(auth);
-      sid = auth.currentUser.uid;
+      readHostUser();
     } catch (e) {
       console.error(e);
       db = null; unavailableReason = "auth"; view = "unavailable"; render(); return;
@@ -1050,6 +1212,7 @@ import { getFirestore, doc as fsDoc, collection as fsCol, getDoc, getDocs, setDo
       local.del("session");
     }
     view = "home"; render();
+    loadMyGames();
   }
   boot();
 })();
